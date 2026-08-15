@@ -21,11 +21,15 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   </React.StrictMode>
 )
 
-// PWA：仅生产构建注册 Service Worker（开发模式避免缓存干扰 HMR）
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
+// 本地版不使用 Service Worker（避免升级后缓存旧版资源导致页面 MIME 报错）。
+// 若浏览器里残留旧版注册的 SW，这里主动注销并清缓存。
+if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch((err) => {
-      console.warn('Service Worker 注册失败（不影响使用）:', err)
+    navigator.serviceWorker.getRegistrations().then((regs) => {
+      for (const reg of regs) reg.unregister()
     })
+    if (window.caches?.keys) {
+      window.caches.keys().then((keys) => keys.forEach((k) => window.caches.delete(k)))
+    }
   })
 }

@@ -51,8 +51,9 @@ export async function startFrontend(distPath, port, apiProxy = null) {
     throw new Error(`Frontend dist not found at ${distPath}`)
   }
 
-  // 预读 index.html（SPA fallback 用）
+  // 预读 index.html（SPA fallback 用）+ 计算 ETag（HTML 缓存再验证，升级后立即取到新壳）
   let indexHtml = await readFile(distIndex, 'utf-8')
+  const INDEX_ETAG = '"' + Buffer.from(indexHtml).toString('base64').slice(0, 24) + '"'
 
   const server = createServer(async (req, res) => {
     const urlPath = decodeURIComponent((req.url || '/').split('?')[0])
@@ -96,9 +97,17 @@ export async function startFrontend(distPath, port, apiProxy = null) {
         // 目录 → index.html
         const idx = join(filePath, 'index.html')
         if (existsSync(idx)) {
-          const body = await readFile(idx)
-          res.writeHead(200, { 'Content-Type': MIME['.html'] || 'text/html', 'Cache-Control': 'no-cache' })
-          res.end(body)
+          if (req.headers['if-none-match'] === INDEX_ETAG) {
+            res.writeHead(304)
+            res.end()
+            return
+          }
+          res.writeHead(200, {
+            'Content-Type': MIME['.html'] || 'text/html',
+            'Cache-Control': 'no-cache',
+            ETag: INDEX_ETAG,
+          })
+          res.end(indexHtml)
         } else {
           res.writeHead(404, { 'Content-Type': 'text/plain' })
           res.end('Not Found')
@@ -108,15 +117,40 @@ export async function startFrontend(distPath, port, apiProxy = null) {
 
       const ext = extname(filePath).toLowerCase()
       const isAsset = urlPath.includes('/assets/')
+      const isHtml = ext === '.html'
+      if (isHtml && req.headers['if-none-match'] === INDEX_ETAG) {
+        res.writeHead(304)
+        res.end()
+        return
+      }
       res.writeHead(200, {
         'Content-Type': MIME[ext] || 'application/octet-stream',
         'Cache-Control': isAsset ? 'public, max-age=31536000, immutable' : 'no-cache',
+        ...(isHtml ? { ETag: INDEX_ETAG } : {}),
       })
       const body = await readFile(filePath)
       res.end(body)
     } catch {
-      // ── SPA fallback：所有未命中 → index.html ────────────
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' })
+      // ── 缺失文件处理 ─────────────────────────────────────
+      // 带扩展名的资源（.js/.css/.png 等）不存在 → 404（不能回退 index.html，
+      // 否则浏览器拿到 text/html 触发 MIME 校验报错，且掩盖旧缓存引用的失效资源）
+      const missingExt = extname(urlPath).toLowerCase()
+      if (missingExt && MIME[missingExt]) {
+        res.writeHead(404, { 'Content-Type': MIME[missingExt] })
+        res.end('Not Found')
+        return
+      }
+      // ── SPA fallback：无扩展名的路由 → index.html ────────
+      if (req.headers['if-none-match'] === INDEX_ETAG) {
+        res.writeHead(304)
+        res.end()
+        return
+      }
+      res.writeHead(200, {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-cache',
+        ETag: INDEX_ETAG,
+      })
       res.end(indexHtml)
     }
   })
