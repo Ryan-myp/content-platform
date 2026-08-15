@@ -155,12 +155,44 @@ from digital_human import router as digital_human_router  # noqa: E402
 from relay_api import router as relay_router  # noqa: E402
 from drafts import router as drafts_router  # noqa: E402
 from gallery import router as gallery_router  # noqa: E402
+# ── 应用与工具模块（v2：效率工具箱/PDF/思维导图/数据分析等）──
+from tool_hub import router as tool_hub_router  # noqa: E402
+from pdf_tools import router as pdf_tools_router  # noqa: E402
+from mindmap import router as mindmap_router  # noqa: E402
+from seo_analyzer import router as seo_analyzer_router  # noqa: E402
+from stock_tools import router as stock_tools_router  # noqa: E402
+from data_analyzer import router as data_analyzer_router  # noqa: E402
+from data_forecast import router as data_forecast_router  # noqa: E402
+from content_strategy import router as content_strategy_router  # noqa: E402
+from growth_engine import router as growth_engine_router  # noqa: E402
+from smart_dashboard import router as smart_dashboard_router  # noqa: E402
+from competitor_monitor import router as competitor_monitor_router  # noqa: E402
+from doc_qa import router as doc_qa_router  # noqa: E402
+from web_search import router as web_search_router  # noqa: E402
+from publishing import router as publishing_router  # noqa: E402
+from video_analyzer import router as video_analyzer_router  # noqa: E402
+from ai_video_api import router as ai_video_router  # noqa: E402
+from favorites_api import router as favorites_api_router  # noqa: E402
+from search_api import router as search_api_router  # noqa: E402
+from realtime import router as realtime_router  # noqa: E402
+from extended_api import router as extended_api_router  # noqa: E402
+from template_store import router as template_store_router  # noqa: E402
+from templates_market import router as templates_market_router  # noqa: E402
+from apikey_api import router as apikey_api_router  # noqa: E402
 
 for r in [
     image_factory_router, video_factory_router, music_factory_router,
     voice_factory_router, meme_factory_router, game_factory_router,
     miniapp_router, drama_router, digital_human_router,
     relay_router, drafts_router, gallery_router,
+    tool_hub_router, pdf_tools_router, mindmap_router, seo_analyzer_router,
+    stock_tools_router, data_analyzer_router, data_forecast_router,
+    content_strategy_router, growth_engine_router, smart_dashboard_router,
+    competitor_monitor_router, doc_qa_router, web_search_router,
+    publishing_router, video_analyzer_router, ai_video_router,
+    favorites_api_router, search_api_router,
+    realtime_router, extended_api_router, template_store_router,
+    templates_market_router, apikey_api_router,
 ]:
     app.include_router(r)
 
