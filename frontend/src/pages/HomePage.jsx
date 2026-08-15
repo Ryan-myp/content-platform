@@ -362,13 +362,6 @@ const SCENE_GROUPS = [
         icon: FlaskConical,
         keywords: 'AB测试,实验',
       },
-      {
-        label: '用量分析',
-        desc: '个人AI使用统计',
-        path: '/usage-analytics',
-        icon: Activity,
-        keywords: '用量,统计,分析,Token',
-      },
     ],
   },
   {
@@ -398,13 +391,6 @@ const SCENE_GROUPS = [
         path: '/notifications',
         icon: Bell,
         keywords: '通知,消息',
-      },
-      {
-        label: '会员中心',
-        desc: '额度与权益',
-        path: '/membership',
-        icon: Crown,
-        keywords: '会员,权益,额度',
       },
       {
         label: '个人资料',

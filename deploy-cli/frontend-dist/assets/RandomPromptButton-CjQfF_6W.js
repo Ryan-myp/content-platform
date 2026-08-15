@@ -1,0 +1,1 @@
+import{j as t}from"./markdown-3D-f55-q.js";import{W as r}from"./icons-BmwSNEYP.js";function l({prompts:n,onPick:a,className:e=""}){const o=()=>{!n||n.length===0||a(n[Math.floor(Math.random()*n.length)])};return t.jsxs("button",{onClick:o,className:`inline-flex items-center gap-1 ${e}`,children:[t.jsx(r,{className:"w-3 h-3"}),"随机提示词"]})}export{l as R};

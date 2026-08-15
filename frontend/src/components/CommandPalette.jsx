@@ -445,14 +445,6 @@ const COMMANDS = [
     category: '运营',
   },
   {
-    id: 'nav-usage-analytics',
-    label: '用量分析',
-    description: '个人AI使用统计与趋势',
-    icon: Activity,
-    path: '/usage-analytics',
-    category: '运营',
-  },
-  {
     id: 'nav-strategy',
     label: '内容策略',
     description: 'AI 内容营销策略规划',
@@ -524,14 +516,6 @@ const COMMANDS = [
     description: '账号信息与偏好设置',
     icon: User,
     path: '/profile',
-    category: '系统',
-  },
-  {
-    id: 'nav-membership',
-    label: '会员中心',
-    description: '升级会员解锁更多额度',
-    icon: Crown,
-    path: '/membership',
     category: '系统',
   },
   {

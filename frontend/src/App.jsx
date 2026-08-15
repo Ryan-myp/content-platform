@@ -505,30 +505,6 @@ export default function App() {
                             
                             
                             <Route
-                              path="/usage-analytics"
-                              element={
-                                <AccessGuard path="/usage-analytics">
-                                  <UsageAnalyticsPage />
-                                </AccessGuard>
-                              }
-                            />
-                            <Route
-                              path="/usage-detail"
-                              element={
-                                <AccessGuard path="/usage-detail">
-                                  <UsageDetailPage />
-                                </AccessGuard>
-                              }
-                            />
-                            <Route
-                              path="/invite-history"
-                              element={
-                                <AccessGuard path="/invite-history">
-                                  <InviteHistoryPage />
-                                </AccessGuard>
-                              }
-                            />
-                            <Route
                               path="/creator-center"
                               element={
                                 <AccessGuard path="/creator-center">
