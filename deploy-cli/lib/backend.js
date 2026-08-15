@@ -77,7 +77,18 @@ export async function startBackend(venvPython, preferredPort = 8888) {
   })
   backendProc.stderr.on('data', (d) => {
     const line = d.toString().trim()
-    if (line) console.log(`     [backend:err] ${line.slice(0, 200)}`)
+    if (!line) return
+    // 过滤正常访问日志（observability 中间件把每次请求都打到 stderr）：
+    // 状态 < 400 的请求日志是正常信息，不显示，避免 [backend:err] 刷屏
+    try {
+      const obj = JSON.parse(line)
+      if (obj && typeof obj === 'object' && obj.request_id && typeof obj.status === 'number') {
+        if (obj.status < 400) return
+      }
+    } catch {
+      /* 非 JSON 日志（Traceback/警告等）正常显示 */
+    }
+    console.log(`     [backend:err] ${line.slice(0, 200)}`)
   })
 
   backendProc.on('exit', (code, signal) => {
