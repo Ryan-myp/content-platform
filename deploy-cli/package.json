@@ -1,7 +1,7 @@
 {
   "name": "@ryan-myp/code-platform",
-  "version": "1.0.2",
-  "description": "小团智能平台一键部署 — npx 启动 FastAPI 后端 + React 前端（免服务器）",
+  "version": "1.0.4",
+  "description": "小团智能内容创作平台一键部署 — 本地免费、免注册登录，AI 费用走中转站 Key（npx 启动 FastAPI + React）",
   "type": "module",
   "bin": {
     "code-platform": "./bin/cli.js",

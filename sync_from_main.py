@@ -113,6 +113,25 @@ CUSTOM_FRONTEND_FILES = {
     'App.jsx',
     'components/Sidebar.jsx',
     'pages/ProfilePage.jsx',
+    # 本地免费版深度精简：无登录墙/无会员/无研发入口（主仓库更新不覆盖）
+    'pages/LoginPage.jsx',
+    'pages/HomePage.jsx',
+    'pages/HelpPage.jsx',
+    'pages/DashboardPage.jsx',
+    'pages/SearchPage.jsx',
+    'pages/ToolHubPage.jsx',
+    'pages/ToolRunPage.jsx',
+    'pages/DigitalHumanPage.jsx',
+    'pages/NotificationsPage.jsx',
+    'pages/ArtifactsPage.jsx',
+    'components/AccessGuard.jsx',
+    'components/CommandPalette.jsx',
+    'components/OnboardingTour.jsx',
+    'components/FloatingAssistant.jsx',
+    'components/MobileBottomNav.jsx',
+    'lib/pageTitle.js',
+    'hooks/useRecentTools.js',
+    'hooks/useAccess.js',
 }
 
 

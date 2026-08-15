@@ -8,26 +8,17 @@ import {
   Image,
   Film,
   Music,
-  Database,
   Wrench,
-  Server,
-  Settings,
-  MessageSquare,
-  Brain,
   FileText,
   CheckCircle2,
   Bell,
   Zap,
-  Users,
-  Play,
   ArrowRight,
   Home,
   Shield,
-  GitBranch,
   PenTool,
   Languages,
   BarChart3,
-  FlaskConical,
   Presentation,
   Table2,
   Share2,
@@ -35,7 +26,6 @@ import {
   Code2,
   Puzzle,
   Rocket,
-  RefreshCcw,
   Send,
   Smartphone,
   Gamepad2,
@@ -46,18 +36,13 @@ import {
   GalleryVerticalEnd,
   Store,
   Globe,
-  Key,
-  Clock,
-  Terminal,
   Volume2,
   Monitor,
   Landmark,
   Target,
   FileSearch,
-  Files,
   Activity,
   BookOpen,
-  ListTodo,
   Heart,
   HelpCircle,
   Crown,
@@ -78,31 +63,6 @@ const COMMANDS = [
     category: '导航',
   },
   {
-    id: 'nav-auto-run',
-    label: '一句话全自动',
-    description: '说出功能 → PRD→审查→方案→代码→部署 全自动',
-    icon: Rocket,
-    path: '/workspace',
-    category: '导航',
-    highlight: true,
-  },
-  {
-    id: 'nav-workspace',
-    label: 'AI 工作台',
-    description: '需求 → 审查 → 设计 → 测试 → 代码 → 部署',
-    icon: Zap,
-    path: '/workspace',
-    category: '导航',
-  },
-  {
-    id: 'nav-projects',
-    label: '项目空间',
-    description: '查看所有项目',
-    icon: FolderKanban,
-    path: '/projects',
-    category: '导航',
-  },
-  {
     id: 'nav-artifacts',
     label: '成果仓库',
     description: '查看所有成果',
@@ -111,89 +71,7 @@ const COMMANDS = [
     category: '导航',
   },
 
-  // 智能体
-  {
-    id: 'nav-agents',
-    label: 'Agent 列表',
-    description: '管理智能体',
-    icon: Bot,
-    path: '/agents',
-    category: '智能体',
-  },
-  {
-    id: 'nav-teams',
-    label: 'Team 管理',
-    description: '管理团队',
-    icon: Users,
-    path: '/teams',
-    category: '智能体',
-  },
-  {
-    id: 'nav-workflows',
-    label: 'Workflow 管理',
-    description: '管理工作流',
-    icon: Layers,
-    path: '/workflows',
-    category: '智能体',
-  },
-  {
-    id: 'nav-knowledge',
-    label: '知识库',
-    description: '管理知识库',
-    icon: Database,
-    path: '/knowledge-bases',
-    category: '智能体',
-  },
-  {
-    id: 'nav-skills',
-    label: 'Skills',
-    description: '管理技能',
-    icon: BookOpen,
-    path: '/skills',
-    category: '智能体',
-  },
-  {
-    id: 'nav-mcp',
-    label: 'MCP Servers',
-    description: '管理 MCP 服务',
-    icon: Server,
-    path: '/mcp-servers',
-    category: '智能体',
-  },
 
-  // 研发工具
-  {
-    id: 'nav-sandbox',
-    label: '沙箱运行',
-    description: '查看沙箱容器与日志',
-    icon: Play,
-    path: '/sandbox',
-    category: '研发工具',
-  },
-  {
-    id: 'nav-pipelines',
-    label: 'CI/CD 流水线',
-    description: '部署状态与 AI 修复',
-    icon: GitBranch,
-    path: '/pipelines',
-    category: '研发工具',
-  },
-  {
-    id: 'nav-codegen',
-    label: '代码生成',
-    description: 'AI 工作台 · 生成代码',
-    icon: Code2,
-    path: '/workspace?tab=code',
-    category: '研发工具',
-  },
-  {
-    id: 'nav-codereview',
-    label: '代码审查',
-    description: 'AI 工作台 · 审查代码',
-    icon: Shield,
-    path: '/workspace?tab=review_code',
-    category: '研发工具',
-  },
 
   // 内容创作
   {
@@ -310,14 +188,6 @@ const COMMANDS = [
     path: '/web-search',
     category: 'AI工坊',
   },
-  {
-    id: 'nav-code-interpreter',
-    label: '代码解释器',
-    description: 'Python在线运行，数据分析/可视化',
-    icon: Terminal,
-    path: '/code-interpreter',
-    category: 'AI工坊',
-  },
 
   // 应用与社区
   {
@@ -411,14 +281,6 @@ const COMMANDS = [
     category: '办公',
   },
   {
-    id: 'nav-batch-process',
-    label: '批量处理',
-    description: '多文件批量翻译、摘要、关键词',
-    icon: Files,
-    path: '/batch-process',
-    category: '办公',
-  },
-  {
     id: 'nav-data-analyzer',
     label: '数据分析',
     description: '上传数据智能分析洞察',
@@ -434,14 +296,6 @@ const COMMANDS = [
     description: '平台数据概览',
     icon: BarChart3,
     path: '/dashboard',
-    category: '运营',
-  },
-  {
-    id: 'nav-abtest',
-    label: 'A/B 测试',
-    description: '实验管理',
-    icon: FlaskConical,
-    path: '/ab-testing',
     category: '运营',
   },
   {
@@ -469,39 +323,6 @@ const COMMANDS = [
     category: '运营',
   },
 
-  // 系统
-  {
-    id: 'nav-config',
-    label: '模型配置',
-    description: '配置 AI 模型',
-    icon: Settings,
-    path: '/config',
-    category: '系统',
-  },
-  {
-    id: 'nav-api-platform',
-    label: 'API开放平台',
-    description: '创建API Key接入平台能力',
-    icon: Key,
-    path: '/api-platform',
-    category: '系统',
-  },
-  {
-    id: 'nav-scheduler',
-    label: '定时任务',
-    description: '定时报告/同步/提醒自动化',
-    icon: Clock,
-    path: '/scheduler',
-    category: '系统',
-  },
-  {
-    id: 'nav-plugins',
-    label: '插件市场',
-    description: '浏览插件',
-    icon: Puzzle,
-    path: '/plugins',
-    category: '系统',
-  },
   {
     id: 'nav-help',
     label: '帮助中心',
@@ -527,31 +348,6 @@ const COMMANDS = [
     category: '系统',
   },
 
-  // 其他
-  {
-    id: 'nav-board',
-    label: '需求看板',
-    description: '查看需求看板',
-    icon: ListTodo,
-    path: '/board',
-    category: '其他',
-  },
-  {
-    id: 'nav-chat',
-    label: '任务对话',
-    description: '智能协作',
-    icon: MessageSquare,
-    path: '/chat',
-    category: '其他',
-  },
-  {
-    id: 'nav-evolution',
-    label: '自进化中心',
-    description: '平台自进化',
-    icon: Brain,
-    path: '/evolution',
-    category: '其他',
-  },
   {
     id: 'nav-tasks',
     label: '任务中心',
@@ -569,22 +365,6 @@ const COMMANDS = [
     category: '其他',
   },
 ]
-
-// 需求流水线阶段（与 AI 工作台一致，用于进度展示）
-const STAGES = [
-  { key: 'prd', field: 'prd_text' },
-  { key: 'review', field: 'review_report' },
-  { key: 'td', field: 'tech_design' },
-  { key: 'test', field: 'test_cases' },
-  { key: 'code', field: 'code' },
-  { key: 'review_code', field: 'code_review' },
-]
-
-const PIPE_DOT = {
-  running: 'bg-blue-500 animate-pulse',
-  success: 'bg-emerald-500',
-  failed: 'bg-red-500',
-}
 
 // 全局平台搜索结果的图标/配色（与后端 /api/search/global 的 type 对应）
 const GLOBAL_ICONS = {
@@ -626,8 +406,6 @@ export default function CommandPalette({ isOpen, onClose }) {
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
-  const [reqs, setReqs] = useState([])
-  const [pipelines, setPipelines] = useState([])
   const [globalResults, setGlobalResults] = useState([])
   const inputRef = useRef(null)
 
@@ -640,17 +418,6 @@ export default function CommandPalette({ isOpen, onClose }) {
       setSelectedIndex(0)
       setGlobalResults([])
       setTimeout(() => inputRef.current?.focus(), 50)
-      // 打开时异步刷新动态数据（需求/流水线）
-      Promise.all([
-        api
-          .get('/api/requirements')
-          .then((r) => setReqs((r.data || []).slice(0, 8)))
-          .catch(() => {}),
-        api
-          .get('/api/pipelines')
-          .then((r) => setPipelines((r.data || []).slice(0, 8)))
-          .catch(() => {}),
-      ])
     }
   }, [isOpen])
 
@@ -664,7 +431,7 @@ export default function CommandPalette({ isOpen, onClose }) {
       api
         .post('/api/search/global', {
           query: q,
-          types: ['agents', 'skills', 'workflows', 'tools', 'docs', 'history', 'works'],
+          types: ['tools', 'docs', 'works'],
           limit: 5,
         })
         .then((r) => setGlobalResults((r.data?.results || []).slice(0, 5)))
@@ -692,31 +459,6 @@ export default function CommandPalette({ isOpen, onClose }) {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [isOpen, onClose])
 
-  // 需求进度：x/6 阶段完成 + 待更新数
-  const reqProgress = (req) => {
-    let ps = req.pipeline_status || {}
-    if (typeof ps === 'string') {
-      try {
-        ps = JSON.parse(ps)
-      } catch {
-        ps = {}
-      }
-    }
-    let done = 0
-    let stale = 0
-    STAGES.forEach((s) => {
-      if (ps[s.key]?.status === 'stale') stale += 1
-      else if (req[s.field]) done += 1
-    })
-    return { done, stale }
-  }
-
-  // 动态搜索结果（需求 + 流水线）
-  const matchedReqs = q ? reqs.filter((r) => (r.name || '').toLowerCase().includes(q)) : reqs
-  const matchedPipelines = q
-    ? pipelines.filter((p) => (p.name || '').toLowerCase().includes(q))
-    : []
-
   // 过滤静态命令
   const filteredCommands = COMMANDS.filter((cmd) => {
     if (!q) return true
@@ -729,32 +471,7 @@ export default function CommandPalette({ isOpen, onClose }) {
 
   // 扁平化可执行项（动态优先），保证键盘导航索引一致
   const dynamicItems = [
-    ...matchedReqs.map((r) => {
-      const { done, stale } = reqProgress(r)
-      return {
-        id: `req-${r.id}`,
-        kind: 'req',
-        label: r.name,
-        description: `需求 · ${done}/6 阶段完成${stale > 0 ? ` · ${stale} 个需更新` : ''}`,
-        icon: stale > 0 ? RefreshCcw : FileText,
-        iconCls: stale > 0 ? 'bg-amber-100 text-amber-600' : 'bg-brand-100 text-brand-600',
-        path: `/workspace?requirement_id=${r.id}`,
-      }
-    }),
-    ...matchedPipelines.map((p) => {
-      const status = p.last_run?.status || p.status || 'unknown'
-      return {
-        id: `pipe-${p.id}`,
-        kind: 'pipe',
-        label: p.name,
-        description: `流水线 · ${status === 'success' ? '运行中' : status === 'failed' ? '失败，可 AI 修复' : status === 'running' ? '部署中' : status}`,
-        icon: GitBranch,
-        iconCls: 'bg-blue-100 text-blue-600',
-        dotCls: PIPE_DOT[status],
-        path: '/pipelines',
-      }
-    }),
-    // 全局平台搜索结果（Agent/Skill/工作流/工具/知识库/历史对话）
+    // 全局平台搜索结果（工具/文档/作品）
     ...globalResults.map((r) => ({
       id: `g-${r.type}-${r.id}`,
       kind: 'global',

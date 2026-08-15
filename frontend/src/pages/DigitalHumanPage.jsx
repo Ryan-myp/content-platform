@@ -151,7 +151,7 @@ export default function DigitalHumanPage() {
   // 商业参数：分辨率 / 帧率 / 水印
   const [resolution, setResolution] = useState('720p')
   const [fps, setFps] = useState(24) // 默认 24fps 流畅档（画质优先，异步任务可等）
-  const [watermark, setWatermark] = useState(false) // 会员可开关；免费用户由后端强制加水印
+  const [watermark, setWatermark] = useState(true) // 本地版自由开关水印
   const [engine, setEngine] = useState('2d') // 引擎：2d=基础渲染，live_portrait=照片数字人
   const [genPhase, setGenPhase] = useState('') // 生成阶段提示文案
   const [quota, setQuota] = useState(null) // 今日剩余额度
@@ -287,9 +287,6 @@ export default function DigitalHumanPage() {
     }
   }
 
-  // 会员或管理员（管理员后端豁免水印/1080p/额度限制，前端同步放行）
-  const isMember = () =>
-    quota?.membership === 'vip' || quota?.membership === 'pro' || quota?.role === 'admin'
 
   // 我的存储用量（/api/digital-human/storage → 记录数/文件数/磁盘占用/保留期）
   const loadStorage = async () => {
@@ -801,8 +798,7 @@ const fmtDaysLeft = (days) => {
           if (t.status === 'canceled') {
             toast.info('任务已取消')
           } else if (t.error_code === 402) {
-            // 402 额度耗尽：全局已提示并引导升级（QuotaExhaustedNotifier），此处仅打开会员页
-            window.open('/membership', '_blank')
+            // 402 额度耗尽：全局已提示（QuotaExhaustedNotifier），本地版无需跳会员页
           } else {
             toast.error(`生成失败：${friendlyError(t.error)}`)
           }
@@ -879,8 +875,7 @@ const fmtDaysLeft = (days) => {
     } catch (e) {
       setGenerating(false)
       if (e.status === 402) {
-        // 402 额度耗尽：全局已提示并引导升级，此处仅打开会员页
-        window.open('/membership', '_blank')
+        // 402 额度耗尽：全局已提示（QuotaExhaustedNotifier），本地版无需跳会员页
       } else {
         toast.error(`生成失败：${e.message}`)
       }
@@ -1172,8 +1167,7 @@ const fmtDaysLeft = (days) => {
       pollBatch(res.data.batch_id)
     } catch (e) {
       if (e.status === 402) {
-        // 402 额度耗尽：全局已提示并引导升级，此处仅打开会员页
-        window.open('/membership', '_blank')
+        // 402 额度耗尽：全局已提示（QuotaExhaustedNotifier），本地版无需跳会员页
       } else {
         toast.error(`批量生成失败：${e.message}`)
       }
@@ -1341,7 +1335,7 @@ const fmtDaysLeft = (days) => {
         iconColor="from-violet-500 to-purple-600"
       />
 
-      {/* 商业配额条：今日剩余生成次数 + 会员状态 */}
+      {/* 今日额度条：本地版按每日次数限制（与中转站无关，仅防滥用） */}
       {quota && (
         <div
           className={`flex flex-wrap items-center gap-3 px-4 py-2.5 rounded-xl border text-xs ${
@@ -1361,20 +1355,7 @@ const fmtDaysLeft = (days) => {
             </span>
             {quota.daily_quota ? ` / ${quota.daily_quota} 次` : ''}
           </span>
-          {isMember() ? (
-            <span className="flex items-center gap-1 text-emerald-600">
-              <Sparkles className="w-3 h-3" />{' '}
-              {quota.membership === 'vip' ? '至尊版 · 不限量' : '专业版'}会员
-              {quota.membership_days_left != null && `（${fmtDaysLeft(quota.membership_days_left)}）`}
-            </span>
-          ) : (
-            <a
-              href="/membership"
-              className="text-violet-600 hover:text-violet-800 font-medium underline underline-offset-2"
-            >
-              免费版每日 {quota.daily_quota || 30} 次 · 升级解锁 1080P 无水印
-            </a>
-          )}
+          <span className="text-gray-400">AI 费用由你的中转站 Key 计费</span>
           <span className="ml-auto text-[10px] text-gray-400">
             每次生成消耗 1 次额度
             {storage &&
@@ -2048,20 +2029,18 @@ const fmtDaysLeft = (days) => {
                 <div className="grid grid-cols-2 gap-1.5">
                   {[
                     { id: '720p', name: '高清 720P' },
-                    { id: '1080p', name: '全高清 1080P', pro: true },
+                    { id: '1080p', name: '全高清 1080P' },
                   ].map((r) => (
                     <button
                       key={r.id}
                       onClick={() => setResolution(r.id)}
-                      disabled={r.pro && !isMember()}
-                      className={`p-1.5 rounded-lg text-xs font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+                      className={`p-1.5 rounded-lg text-xs font-medium transition-all ${
                         resolution === r.id
                           ? 'bg-sky-100 text-sky-700 border border-sky-300'
                           : 'bg-gray-50 text-gray-600 border border-gray-100 hover:bg-gray-100'
                       }`}
                     >
                       {r.name}
-                      {r.pro && !isMember() && ' 🔒'}
                     </button>
                   ))}
                 </div>
@@ -2094,22 +2073,16 @@ const fmtDaysLeft = (days) => {
               <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-gray-50 border border-gray-100">
                 <div>
                   <div className="text-xs font-medium text-gray-700">平台水印</div>
-                  <div className="text-[10px] text-gray-400">
-                    {isMember() ? '会员可自由开关' : '免费版视频右下角含平台水印'}
-                  </div>
+                  <div className="text-[10px] text-gray-400">本地版可自由开关</div>
                 </div>
-                {isMember() ? (
-                  <button
-                    onClick={() => setWatermark(!watermark)}
-                    className={`w-9 h-5 rounded-full transition-colors relative ${watermark ? 'bg-sky-500' : 'bg-gray-300'}`}
-                  >
-                    <span
-                      className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${watermark ? 'left-4.5' : 'left-0.5'}`}
-                    />
-                  </button>
-                ) : (
-                  <span className="text-[10px] text-amber-500 font-medium">🔒 升级会员去除</span>
-                )}
+                <button
+                  onClick={() => setWatermark(!watermark)}
+                  className={`w-9 h-5 rounded-full transition-colors relative ${watermark ? 'bg-sky-500' : 'bg-gray-300'}`}
+                >
+                  <span
+                    className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${watermark ? 'left-4.5' : 'left-0.5'}`}
+                  />
+                </button>
               </div>
             </div>
           </Card>

@@ -70,7 +70,6 @@ const WebSearchPage = lazy(() => import('./pages/WebSearchPage'))
 const DataAnalyzerPage = lazy(() => import('./pages/DataAnalyzerPage'))
 const CreatorCenterPage = lazy(() => import('./pages/CreatorCenterPage'))
 const SearchPage = lazy(() => import('./pages/SearchPage'))
-const FeedbackPage = lazy(() => import('./pages/FeedbackPage'))
 const ShortcutsPage = lazy(() => import('./pages/ShortcutsPage'))
 // 全量修复 v1：内容策略 / 竞品监控 / 收藏中心
 const ContentStrategyPage = lazy(() => import('./pages/ContentStrategyPage'))
@@ -130,7 +129,7 @@ function QuotaExhaustedNotifier() {
   const toast = useToast()
   useEffect(() => {
     const notify = (e) => {
-      toast.error(e?.detail?.message || '今日生成额度已用完，可在会员中心查看套餐升级', 6000)
+      toast.error(e?.detail?.message || '今日生成额度已用完，将在次日 0 点自动恢复', 6000)
     }
     window.addEventListener('quota-exhausted', notify)
     return () => window.removeEventListener('quota-exhausted', notify)
@@ -153,6 +152,31 @@ export default function App() {
     () => !!localStorage.getItem('token') && !!user
   )
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
+
+  // 本地版免登录：无 token 时静默调用 /api/auth/auto（后端自动创建本地用户并签发 token），
+  // 用户首次打开即直接进入主页，无需注册/登录
+  useEffect(() => {
+    if (isAuthenticated) return
+    let cancelled = false
+    axios
+      .post('/api/auth/auto')
+      .then((res) => {
+        if (cancelled) return
+        const { access_token, user: u } = res.data || {}
+        if (!access_token || !u) return
+        localStorage.setItem('token', access_token)
+        localStorage.setItem('user', JSON.stringify(u))
+        axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`
+        setUser(u)
+        setIsAuthenticated(true)
+      })
+      .catch(() => {
+        // 后端不支持自动登录（旧版本）：保留登录页兜底
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [isAuthenticated])
   // 门户配置（登录后从后端加载，决定侧边栏导航结构）
   const [portal, setPortal] = useState(() => {
     try {
@@ -235,7 +259,6 @@ export default function App() {
               }
             />
             {/* 公开分享查看页（无需登录） */}
-            } />
             <Route
               path="*"
               element={
@@ -258,8 +281,8 @@ export default function App() {
                             <Route path="/notifications" element={<NotificationsPage />} />
                             
                             
-                            {/* 演示别名：/workbench → 工作台 */}
-                            <Route path="/workbench" element={<Navigate to="/workspace" replace />} />
+                            {/* 演示别名：/workbench → 工具中心 */}
+                            <Route path="/workbench" element={<Navigate to="/tool-hub" replace />} />
                             
                             
                             <Route path="/artifacts" element={<ArtifactsPage />} />
@@ -301,14 +324,14 @@ export default function App() {
                                 </AccessGuard>
                               }
                             />
-                            {/* v9.0 Phase 2: 研发增强（代码生成/代码审查已并入 AI 工作台） */}
+                            {/* 旧研发入口统一收敛到工具中心 */}
                             <Route
                               path="/code-gen"
-                              element={<Navigate to="/workspace?tab=code" replace />}
+                              element={<Navigate to="/tool-hub" replace />}
                             />
                             <Route
                               path="/code-review"
-                              element={<Navigate to="/workspace?tab=review_code" replace />}
+                              element={<Navigate to="/tool-hub" replace />}
                             />
                             
                             {/* v9.0 Phase 3: 内容创作 */}
@@ -518,14 +541,8 @@ export default function App() {
                               element={<SearchPage />}
                             />
                             <Route
-                              path="/feedback"
-                              element={<FeedbackPage />}
-                            />
-                            <Route
                               path="/shortcuts"
                               element={<ShortcutsPage />}
-                            />
-                            }
                             />
                             
                             {/* v10.0 社区与变现 */}
@@ -607,8 +624,6 @@ export default function App() {
                               path="/profile"
                               element={<ProfilePage user={user} onUserUpdate={handleUserUpdate} />}
                             />
-                            } />
-                            
                             <Route path="/help" element={<HelpPage />} />
                             <Route path="/records" element={<RecordsPage />} />
                             <Route path="/" element={<Navigate to="/home" replace />} />

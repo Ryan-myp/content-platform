@@ -1,12 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import {
   BarChart3,
-  Bot,
-  Layers,
-  FolderKanban,
   CheckCircle2,
-  GitBranch,
-  Code2,
   Languages,
   FileText,
   TrendingUp,
@@ -220,24 +215,6 @@ export default function DashboardPage() {
 
   const cards = [
     {
-      label: 'Agent 总数',
-      value: stats?.agents || 0,
-      icon: Bot,
-      color: 'from-emerald-500 to-teal-600',
-    },
-    {
-      label: 'Workflow 总数',
-      value: stats?.workflows || 0,
-      icon: Layers,
-      color: 'from-blue-500 to-indigo-600',
-    },
-    {
-      label: '项目总数',
-      value: stats?.projects || 0,
-      icon: FolderKanban,
-      color: 'from-violet-500 to-purple-600',
-    },
-    {
       label: '任务总数',
       value: stats?.tasks || 0,
       icon: CheckCircle2,
@@ -250,28 +227,40 @@ export default function DashboardPage() {
       color: 'from-green-500 to-emerald-600',
     },
     {
-      label: '流水线',
-      value: stats?.pipelines || 0,
-      icon: GitBranch,
-      color: 'from-cyan-500 to-blue-600',
+      label: '成果总数',
+      value: stats?.artifacts || stats?.total_artifacts || 0,
+      icon: FileText,
+      color: 'from-teal-500 to-cyan-600',
     },
     {
-      label: '代码生成次数',
-      value: stats?.code_generations || stats?.total_code_gens || 0,
-      icon: Code2,
+      label: '图片作品',
+      value: stats?.images || stats?.total_images || 0,
+      icon: Image,
       color: 'from-pink-500 to-rose-600',
+    },
+    {
+      label: '视频作品',
+      value: stats?.videos || stats?.total_videos || 0,
+      icon: Film,
+      color: 'from-indigo-500 to-violet-600',
+    },
+    {
+      label: '配音作品',
+      value: stats?.voices || stats?.total_voices || 0,
+      icon: Volume2,
+      color: 'from-emerald-500 to-teal-600',
     },
     {
       label: '翻译次数',
       value: stats?.translations || stats?.total_translations || 0,
       icon: Languages,
-      color: 'from-indigo-500 to-violet-600',
+      color: 'from-blue-500 to-indigo-600',
     },
     {
-      label: '成果总数',
-      value: stats?.artifacts || stats?.total_artifacts || 0,
-      icon: FileText,
-      color: 'from-teal-500 to-cyan-600',
+      label: '生成任务',
+      value: stats?.generations || stats?.total_generations || 0,
+      icon: Sparkles,
+      color: 'from-cyan-500 to-blue-600',
     },
   ]
 
@@ -470,10 +459,10 @@ export default function DashboardPage() {
       {/* 快捷入口 */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { name: '用户反馈', path: '/feedback', icon: '💬', color: 'from-blue-500 to-cyan-500', desc: '提交建议与反馈' },
+          { name: '作品广场', path: '/gallery', icon: '🎨', color: 'from-pink-500 to-rose-500', desc: '浏览全平台 AI 作品' },
+          { name: '发布中心', path: '/publish', icon: '🚀', color: 'from-blue-500 to-cyan-500', desc: '一键发布到各平台' },
+          { name: '模板市场', path: '/templates', icon: '📋', color: 'from-purple-500 to-violet-500', desc: '精选创作模板' },
           { name: '快捷键', path: '/shortcuts', icon: '⌨️', color: 'from-emerald-500 to-teal-500', desc: '掌握高效操作' },
-          { name: '下载管理', path: '/downloads', icon: '📥', color: 'from-amber-500 to-orange-500', desc: '查看下载记录' },
-          { name: '审计日志', path: '/audit-log', icon: '🔍', color: 'from-purple-500 to-violet-500', desc: '管理员操作记录' },
         ].map(item => (
           <a key={item.name} href={item.path} className={`bg-gradient-to-br ${item.color} rounded-2xl p-4 text-white hover:shadow-lg transition-all hover:-translate-y-0.5`}>
             <span className="text-2xl">{item.icon}</span>
@@ -518,7 +507,7 @@ export default function DashboardPage() {
               <textarea
                 value={nlQuery}
                 onChange={(e) => setNlQuery(e.target.value)}
-                placeholder="用自然语言描述你想看的数据分析…&#10;&#10;示例：&#10;- 过去7天每天的内容发布量趋势&#10;- 各类型内容的占比&#10;- 本周互动量TOP5的文章&#10;- 各Agent的任务完成率对比"
+                placeholder="用自然语言描述你想看的数据分析…&#10;&#10;示例：&#10;- 过去7天每天的内容发布量趋势&#10;- 各类型内容的占比&#10;- 本周互动量TOP5的文章&#10;- 各作品类型的占比"
                 rows={5}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 outline-none resize-none"
               />

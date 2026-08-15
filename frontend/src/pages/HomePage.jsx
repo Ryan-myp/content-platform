@@ -88,42 +88,6 @@ const absUrl = (u) => (u ? (u.startsWith('http') ? u : `${MEDIA_BASE}${u}`) : ''
 // 全场景能力地图：平台所有能力按场景分组，搜索直达（与侧边栏统一分类）
 const SCENE_GROUPS = [
   {
-    key: 'rd',
-    label: '智能研发',
-    desc: 'AI 全流程开发与交付',
-    icon: Code2,
-    color: 'from-brand-500 to-indigo-600',
-    items: [
-      {
-        label: '一句话全自动',
-        desc: '说出功能 → 自动研发部署',
-        path: '/workspace',
-        icon: Sparkles,
-        hot: true,
-        keywords: '自动,生成,开发,部署',
-      },
-      {
-        label: 'AI 工作台',
-        desc: 'PRD→审查→方案→代码',
-        path: '/workspace',
-        icon: Bot,
-        keywords: '工作台,研发,代码',
-      },
-      { label: '需求看板', desc: '需求与任务管理', path: '/board', icon: ListTodo },
-      { label: '项目空间', desc: '项目全生命周期', path: '/projects', icon: FolderKanban },
-      { label: '成果仓库', desc: '所有成果集中存储', path: '/artifacts', icon: FileText },
-      { label: '沙箱运行', desc: '安全运行 AI 生成应用', path: '/sandbox', icon: Play },
-      { label: 'CI/CD 流水线', desc: '构建·部署·自动修复', path: '/pipelines', icon: GitBranch },
-      { label: 'Agent 智能体', desc: '专业角色智能体', path: '/agents', icon: Bot },
-      { label: '工作流编排', desc: '可视化流程自动化', path: '/workflows', icon: Layers },
-      { label: '知识库', desc: '团队知识沉淀', path: '/knowledge-bases', icon: Database },
-      { label: 'Skills', desc: 'Agent 技能扩展', path: '/skills', icon: BookOpen },
-      { label: 'MCP Servers', desc: '外部能力接入', path: '/mcp-servers', icon: Server },
-      { label: '智能协作', desc: '任务驱动团队对话', path: '/chat', icon: MessageSquare },
-      { label: '自进化中心', desc: '平台持续自我进化', path: '/evolution', icon: Brain },
-    ],
-  },
-  {
     key: 'create',
     label: '内容创作',
     desc: 'AI 生成图·视频·文案',
@@ -342,25 +306,11 @@ const SCENE_GROUPS = [
         keywords: 'PDF,合同,合并,文档',
       },
       {
-        label: '批量处理',
-        desc: '批量翻译·摘要·分析',
-        path: '/batch-process',
-        icon: Files,
-        keywords: '批量,翻译,文档,处理',
-      },
-      {
         label: '数据看板',
         desc: '经营数据可视化',
         path: '/dashboard',
         icon: BarChart3,
         keywords: '看板,数据,图表',
-      },
-      {
-        label: 'AB 测试',
-        desc: '实验设计与分析',
-        path: '/ab-testing',
-        icon: FlaskConical,
-        keywords: 'AB测试,实验',
       },
     ],
   },
@@ -405,57 +355,6 @@ const SCENE_GROUPS = [
         path: '/help',
         icon: HelpCircle,
         keywords: '帮助,教程,FAQ',
-      },
-    ],
-  },
-  {
-    key: 'sys',
-    label: '平台管理',
-    desc: '系统配置与运维',
-    icon: Settings,
-    color: 'from-slate-500 to-gray-700',
-    items: [
-      {
-        label: '模型配置',
-        desc: '多供应商模型路由',
-        path: '/config',
-        icon: Settings,
-        keywords: '模型,配置,API',
-      },
-      {
-        label: 'API开放平台',
-        desc: '创建Key接入能力',
-        path: '/api-platform',
-        icon: Key,
-        keywords: 'API,Key,接口,开放',
-      },
-      {
-        label: '定时任务',
-        desc: '自动化报告与同步',
-        path: '/scheduler',
-        icon: Clock,
-        keywords: '定时,任务,自动化,报告',
-      },
-      {
-        label: '插件市场',
-        desc: '扩展平台能力',
-        path: '/plugins',
-        icon: Puzzle,
-        keywords: '插件,扩展,市场',
-      },
-      {
-        label: '管理后台',
-        desc: '用户·权限·数据',
-        path: '/admin',
-        icon: Shield,
-        keywords: '管理,后台,用户',
-      },
-      {
-        label: 'Team 管理',
-        desc: '团队与成员',
-        path: '/teams',
-        icon: Users,
-        keywords: '团队,成员,协作',
       },
     ],
   },
@@ -565,10 +464,10 @@ const WIDGET_META = [
   {
     type: 'stats',
     label: '数据概览',
-    desc: '统计卡片：Agent/Workflow/项目/任务等',
+    desc: '创作与工具使用概览',
     icon: BarChart3,
   },
-  { type: 'recent', label: '智能流水线', desc: '最近需求进度与部署状态', icon: GitBranch },
+  
   { type: 'tasks', label: '任务中心', desc: 'AI 生成任务进度预览', icon: CheckCircle2 },
   { type: 'quick_actions', label: '快捷操作', desc: '常用功能快捷入口', icon: Zap },
   { type: 'notifications', label: '最新通知', desc: '未读通知预览', icon: Bell },
@@ -851,34 +750,8 @@ export default function HomePage() {
   }
 
   const statCards = [
-    {
-      label: 'Agent',
-      value: stats?.agents || 0,
-      icon: Bot,
-      color: 'from-emerald-500 to-teal-600',
-      path: '/agents',
-    },
-    {
-      label: 'Workflow',
-      value: stats?.workflows || 0,
-      icon: Layers,
-      color: 'from-blue-500 to-indigo-600',
-      path: '/workflows',
-    },
-    {
-      label: '项目',
-      value: stats?.projects || 0,
-      icon: FolderKanban,
-      color: 'from-violet-500 to-purple-600',
-      path: '/projects',
-    },
-    {
-      label: '任务中心',
-      value: tasks.length,
-      icon: CheckCircle2,
-      color: 'from-amber-500 to-orange-600',
-      path: '/tasks',
-    },
+
+
     {
       label: '未读通知',
       value: stats?.notifications_unread || 0,
@@ -896,10 +769,6 @@ export default function HomePage() {
   ]
 
   const quickActions = [
-    { label: 'AI 工作台', icon: Sparkles, path: '/workspace', color: 'bg-brand-500' },
-    { label: '需求看板', icon: ListTodo, path: '/board', color: 'bg-violet-500' },
-    { label: '沙箱运行', icon: Play, path: '/sandbox', color: 'bg-emerald-500' },
-    { label: 'CI/CD 流水线', icon: GitBranch, path: '/pipelines', color: 'bg-blue-500' },
     { label: '图片生成', icon: Image, path: '/image-factory', color: 'bg-purple-500' },
     { label: '效率工具箱', icon: Wrench, path: '/tool-hub', color: 'bg-orange-500' },
   ]
@@ -952,10 +821,10 @@ export default function HomePage() {
           <div className="flex gap-2">
             <Button
               icon={Rocket}
-              onClick={() => navigate('/workspace')}
+              onClick={() => navigate('/tool-hub')}
               className="!bg-white !text-brand-700 hover:!bg-gray-50 shadow-lg"
             >
-              打开 AI 工作台
+              打开效率工具箱
             </Button>
             <Button
               icon={Zap}
@@ -1221,10 +1090,10 @@ export default function HomePage() {
                 <Search className="w-8 h-8 mx-auto mb-2 opacity-50" />
                 <p className="text-sm">没有找到「{capKw}」相关能力，试试其他关键词</p>
                 <button
-                  onClick={() => navigate('/workspace')}
+                  onClick={() => navigate('/tool-hub')}
                   className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-brand-500 to-indigo-600 text-white text-xs font-medium rounded-xl hover:opacity-90 transition-opacity"
                 >
-                  <Sparkles className="w-3.5 h-3.5" /> 或者直接用「一句话全自动」告诉我
+                  <Sparkles className="w-3.5 h-3.5" /> 去效率工具箱看看
                 </button>
               </div>
             )}
@@ -1293,193 +1162,7 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* 智能研发工作流：最近需求 + 最近部署 */}
-      {widgetVisible('recent') && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* 最近需求（AI 流水线进度） */}
-          <div className="lg:col-span-2">
-            <Card>
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-brand-500" />
-                  <h2 className="font-semibold text-gray-900">最近需求 · 智能流水线</h2>
-                  {requirements.length > 0 && <Badge color="brand">{requirements.length}</Badge>}
-                </div>
-                <Button variant="ghost" size="sm" onClick={() => navigate('/workspace')}>
-                  新建需求 <ArrowRight className="w-3.5 h-3.5 ml-1" />
-                </Button>
-              </div>
-              {requirements.length === 0 ? (
-                <div className="text-center py-10 text-gray-400">
-                  <Rocket className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">还没有需求流水线</p>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    className="mt-3"
-                    icon={Plus}
-                    onClick={() => navigate('/workspace')}
-                  >
-                    创建第一个需求
-                  </Button>
-                  <p className="text-xs mt-2 text-gray-400">
-                    从需求 → 审查 → 设计 → 测试 → 代码 → 部署，全流程 AI 驱动
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {requirements.map((req) => {
-                    const staleCount = totalStale(req)
-                    const doneCount = STAGES.filter(
-                      (s) => stageStatus(req, s.key) === 'done'
-                    ).length
-                    return (
-                      <div
-                        key={req.id}
-                        onClick={() => navigate(`/workspace?requirement_id=${req.id}`)}
-                        className="p-3 rounded-lg border border-gray-200 hover:border-brand-300 hover:shadow-sm cursor-pointer transition-all group"
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <CircleDot
-                              className={`w-4 h-4 flex-shrink-0 ${staleCount > 0 ? 'text-amber-500' : 'text-emerald-500'}`}
-                            />
-                            <span className="text-sm font-medium text-gray-900 truncate">
-                              {req.name}
-                            </span>
-                            <Badge color={PRIORITY_COLORS[req.priority]}>{req.priority}</Badge>
-                          </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <span className="text-xs text-gray-400">
-                              {req.updated_at?.split('T')[0]}
-                            </span>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="!py-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              继续流程 <ArrowRight className="w-3.5 h-3.5 ml-1" />
-                            </Button>
-                          </div>
-                        </div>
-                        {/* 6 阶段进度条 */}
-                        <div className="mt-2.5 flex items-center gap-1">
-                          {STAGES.map((s, i) => {
-                            const st = stageStatus(req, s.key)
-                            return (
-                              <React.Fragment key={s.key}>
-                                {i > 0 && (
-                                  <div
-                                    className={`h-0.5 rounded flex-1 min-w-[6px] ${st === 'idle' ? 'bg-gray-200' : 'bg-emerald-400'}`}
-                                  />
-                                )}
-                                <div
-                                  title={`${s.label}：${st === 'stale' ? '需更新' : st === 'done' ? '已完成' : '未开始'}`}
-                                  className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
-                                    st === 'stale'
-                                      ? 'bg-amber-400 ring-2 ring-amber-100'
-                                      : st === 'done'
-                                        ? 'bg-emerald-500'
-                                        : 'bg-gray-200'
-                                  }`}
-                                />
-                              </React.Fragment>
-                            )
-                          })}
-                          <span className="ml-2 text-[10px] text-gray-400 flex-shrink-0">
-                            {doneCount}/6 阶段完成
-                          </span>
-                        </div>
-                        <div className="mt-1.5 flex items-center gap-1.5 pl-1">
-                          {STAGES.map((s) => (
-                            <span key={s.key} className="text-[10px] text-gray-400">
-                              {s.label}
-                            </span>
-                          ))}
-                          {staleCount > 0 && (
-                            <span className="ml-auto flex items-center gap-1 text-[10px] font-semibold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">
-                              <RefreshCcw className="w-2.5 h-2.5" /> {staleCount} 个阶段需更新
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </Card>
-          </div>
-
-          {/* 最近部署状态 */}
-          <div>
-            <Card className="h-full">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <GitBranch className="w-5 h-5 text-blue-500" />
-                  <h2 className="font-semibold text-gray-900">最近部署</h2>
-                </div>
-                <Button variant="ghost" size="sm" onClick={() => navigate('/pipelines')}>
-                  全部 <ArrowRight className="w-3.5 h-3.5 ml-1" />
-                </Button>
-              </div>
-              {pipelines.length === 0 ? (
-                <div className="text-center py-10 text-gray-400">
-                  <GitBranch className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">暂无部署记录</p>
-                  <p className="text-xs mt-1">在 AI 工作台生成代码后一键部署到沙箱</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {pipelines.map((p) => {
-                    const run = p.last_run
-                    const st = RUN_STATUS[run?.status] || {
-                      label: run?.status || '未知',
-                      dot: 'bg-gray-300',
-                      badge: 'gray',
-                    }
-                    const port = p.config?.port
-                    return (
-                      <div
-                        key={p.id}
-                        onClick={() => navigate('/pipelines')}
-                        className="p-3 rounded-lg bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-sm font-medium text-gray-900 truncate">
-                            {p.name}
-                          </span>
-                          <Badge color={st.badge}>
-                            <span className="flex items-center gap-1">
-                              <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />
-                              {st.label}
-                            </span>
-                          </Badge>
-                        </div>
-                        <div className="flex items-center gap-2 mt-1.5 text-xs text-gray-500">
-                          {port && (
-                            <span className="flex items-center gap-1 text-emerald-600 font-medium">
-                              <ExternalLink className="w-3 h-3" /> localhost:{port}
-                            </span>
-                          )}
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" /> {p.updated_at?.split('T')[0]}
-                          </span>
-                          {run?.status === 'failed' && (
-                            <span className="ml-auto flex items-center gap-1 text-amber-600 font-medium">
-                              <Wrench className="w-3 h-3" /> 可 AI 修复
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </Card>
-          </div>
-        </div>
-      )}
-
+      {/* AI 任务中心：最近生成任务 */}
       {widgetVisible('tasks') && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* AI 任务中心预览 */}
@@ -1774,7 +1457,7 @@ export default function HomePage() {
               <FolderKanban className="w-5 h-5 text-violet-500" />
               <h2 className="font-semibold text-gray-900">最近项目</h2>
             </div>
-            <Button variant="ghost" size="sm" onClick={() => navigate('/projects')}>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/artifacts')}>
               查看全部 <ArrowRight className="w-3.5 h-3.5 ml-1" />
             </Button>
           </div>

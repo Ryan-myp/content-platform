@@ -426,7 +426,7 @@ export default function ArtifactsPage() {
         footer={
           <>
             <ShareButton
-              content={`# 成果：${getTypeMeta(selected?.type).label} v${selected?.version || 1}\n\n${selected?.content || selected?.content_preview || ''}\n\n> 由小团智能平台研发流水线产出 · ${selected?.created_at || ''}`}
+              content={`# 成果：${getTypeMeta(selected?.type).label} v${selected?.version || 1}\n\n${selected?.content || selected?.content_preview || ''}\n\n> 由小团智能平台生成 · ${selected?.created_at || ''}`}
               title={`成果：${getTypeMeta(selected?.type).label}`}
               contentType="artifact"
             />

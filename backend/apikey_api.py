@@ -98,7 +98,7 @@ API_DOCS = {
             "body": {"doc_id": "doc_xxx", "question": "核心观点是什么？"},
         },
     ],
-    "rate_limit": "1000 请求/天（会员5000/天）",
+    "rate_limit": "1000 请求/天",
 }
 
 

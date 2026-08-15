@@ -885,7 +885,7 @@ async def retry_task_api(task_id: str, current_user: dict = require_auth()):
         uid = current_user.get("user_id", "") if isinstance(current_user, dict) else ""
         quota = consume_quota(uid)
         if not quota.get("allowed"):
-            raise HTTPException(402, "今日免费额度已用完，升级会员可继续使用（剩余 0 次）")
+            raise HTTPException(402, "今日免费额度已用完，可在次日 0 点自动恢复（剩余 0 次）")
     with get_db_context() as conn:
         conn.execute(
             """UPDATE async_tasks

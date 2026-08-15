@@ -82,11 +82,71 @@ def _patch_relay_api() -> int:
     return 1
 
 
+def _patch_digital_human() -> int:
+    """digital_human：本地版水印策略 + 无会员 402 文案（主仓库商业版会覆盖）。"""
+    path = os.path.join(CP_BACKEND, 'digital_human.py')
+    if not os.path.exists(path):
+        return 0
+    src = open(path, encoding='utf-8').read()
+    n = 0
+    # 水印：主仓库按会员等级强制，本地版改为用户开关自由控制
+    old_wm = 'use_watermark = (membership == "free" and role != "admin") or bool(req.watermark)'
+    new_wm = 'use_watermark = bool(req.watermark)  # 本地免费版：水印由用户开关自由控制'
+    if old_wm in src:
+        src = src.replace(old_wm, new_wm, 1)
+        n += 1
+    # 402 文案：去掉「升级会员」引导
+    for old_msg, new_msg in [
+        (
+            '"今日数字人生成次数已用完，升级会员获取更多额度（专业版每日 200 次，至尊版不限量）"',
+            '"今日数字人生成次数已用完，可在次日 0 点自动恢复"',
+        ),
+        ('"今日生成次数已用完，升级会员获取更多额度"', '"今日生成次数已用完，可在次日 0 点自动恢复"'),
+    ]:
+        if old_msg in src:
+            src = src.replace(old_msg, new_msg, 1)
+            n += 1
+    if n:
+        open(path, 'w', encoding='utf-8').write(src)
+    return n
+
+
+def _patch_task_queue() -> int:
+    """task_queue：402 文案去掉「升级会员」引导。"""
+    path = os.path.join(CP_BACKEND, 'task_queue.py')
+    if not os.path.exists(path):
+        return 0
+    src = open(path, encoding='utf-8').read()
+    old = 'raise HTTPException(402, "今日免费额度已用完，升级会员可继续使用（剩余 0 次）")'
+    new = 'raise HTTPException(402, "今日免费额度已用完，可在次日 0 点自动恢复（剩余 0 次）")'
+    if old not in src:
+        return 0
+    open(path, 'w', encoding='utf-8').write(src.replace(old, new, 1))
+    return 1
+
+
+def _patch_short_drama() -> int:
+    """short_drama：402 文案去掉「升级会员」引导。"""
+    path = os.path.join(CP_BACKEND, 'short_drama.py')
+    if not os.path.exists(path):
+        return 0
+    src = open(path, encoding='utf-8').read()
+    old = '"今日短剧生成次数已用完，升级会员获取更多额度（专业版每日 200 次，至尊版不限量）"'
+    new = '"今日短剧生成次数已用完，可在次日 0 点自动恢复"'
+    if old not in src:
+        return 0
+    open(path, 'w', encoding='utf-8').write(src.replace(old, new, 1))
+    return 1
+
+
 def apply_all() -> int:
     """应用全部定制补丁，返回补丁数。"""
     total = 0
     total += _patch_extended_api()
     total += _patch_relay_api()
+    total += _patch_digital_human()
+    total += _patch_task_queue()
+    total += _patch_short_drama()
     return total
 
 

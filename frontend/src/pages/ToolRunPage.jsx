@@ -39,8 +39,6 @@ import {
   X,
   Download,
   Zap,
-  Lock,
-  Crown,
 } from 'lucide-react'
 
 const ICON_MAP = {
@@ -270,36 +268,6 @@ export default function ToolRunPage() {
     return (
       <div className="flex-1 flex items-center justify-center">
         <div className="animate-spin w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full" />
-      </div>
-    )
-  }
-
-  // 锁定工具（需要会员等级）：展示会员引导页
-  if (tool.locked) {
-    const label = tool.requires === 'vip' ? '至尊会员' : '专业会员'
-    return (
-      <div className="flex-1 overflow-auto bg-gray-50">
-        <div className="max-w-md mx-auto py-20 text-center">
-          <div className="w-16 h-16 mx-auto mb-5 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-glow">
-            <Lock className="w-8 h-8 text-white" />
-          </div>
-          <h2 className="text-xl font-semibold text-ink-900 mb-2">
-            「{tool.name}」为{label}专属
-          </h2>
-          <p className="text-sm text-ink-500 mb-8 leading-relaxed">
-            开通会员即可使用该工具，同时解锁全部会员权益与更高额度。
-          </p>
-          <div className="flex items-center justify-center gap-3">
-            <Button variant="secondary" onClick={() => navigate('/tool-hub')}>
-              <ArrowLeft className="w-4 h-4 mr-1.5" />
-              返回工具库
-            </Button>
-            <Button onClick={() => navigate('/membership')}>
-              <Crown className="w-4 h-4 mr-1.5" />
-              立即开通
-            </Button>
-          </div>
-        </div>
       </div>
     )
   }

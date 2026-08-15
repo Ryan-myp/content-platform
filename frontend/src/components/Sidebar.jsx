@@ -110,23 +110,6 @@ const DEFAULT_NAV_ITEMS = [
     ],
   },
   {
-    key: 'rdm',
-    label: '研发管理',
-    icon: Code2,
-    color: 'from-brand-500 to-brand-600',
-    items: [
-      { path: '/artifacts', label: '成果仓库', icon: FileText },
-    ],
-  },
-  {
-    key: 'agent',
-    label: '智能体',
-    icon: Bot,
-    color: 'from-emerald-500 to-teal-600',
-    items: [
-    ],
-  },
-  {
     key: 'create',
     label: '内容创作',
     icon: Wand2,
@@ -196,7 +179,6 @@ const DEFAULT_NAV_ITEMS = [
     icon: MessageSquare,
     color: 'from-violet-500 to-purple-600',
     items: [
-      { path: '/feedback', label: '用户反馈', icon: Send },
       { path: '/shortcuts', label: '快捷键', icon: Keyboard },
       { path: '/help', label: '使用帮助', icon: HelpCircle },
     ],
@@ -326,7 +308,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, user, portal, onL
                   return (
                     <React.Fragment key={item.path}>
                       <Link
-                        to={locked ? '/membership' : item.path}
+                        to={item.path}
                         onClick={onNavigate}
                         className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-150 ${
                           locked
@@ -428,7 +410,6 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, user, portal, onL
 
   // 可用门户列表（排除当前门户）
   const otherPortals = [
-    { id: 'rdm', name: '研发管理版', desc: '需求→开发→测试→部署' },
     { id: 'media', name: '自媒体创作版', desc: '内容生产→发布→运营' },
     { id: 'general', name: '通用版', desc: '全部功能' },
   ].filter(p => p.id !== (portal?.portal_type || 'general'))

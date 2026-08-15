@@ -154,8 +154,8 @@ export default function NotificationsPage() {
         iconColor="from-pink-500 to-rose-600"
         actions={
           <>
-            <Button variant="ghost" icon={Settings} onClick={() => navigate('/config')}>
-              通知设置
+            <Button variant="ghost" icon={Settings} onClick={() => navigate('/profile')}>
+              个人中心
             </Button>
             {unreadCount > 0 && (
               <Button variant="primary" icon={CheckCheck} onClick={markAllRead}>

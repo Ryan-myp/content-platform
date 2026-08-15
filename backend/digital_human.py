@@ -3028,12 +3028,12 @@ class GenerateRequest(BaseModel):
     speed: float = Field(1.0, ge=0.5, le=2.0, description="语速")
     resolution: str = Field("720p", pattern="^(720p|1080p)$", description="视频分辨率")
     fps: int = Field(15, ge=10, le=30, description="帧率")
-    watermark: bool | None = Field(None, description="水印：None=按会员等级（免费用户加水印）")
+    watermark: bool | None = Field(None, description="水印：本地版由用户开关自由控制")
     engine: str = Field("2d", pattern="^(2d|live_portrait|sadtalker)$", description="引擎：2d=基础卡通渲染，live_portrait=照片数字人（需先创建照片形象），sadtalker=照片数字人高级版（3D 头部运动）")
     emotion: str = Field("auto", pattern="^(auto|neutral|happy|sad|angry|gentle|serious)$", description="情绪（v13.24）：auto=LLM自动判断，或 neutral/happy/sad/angry/gentle/serious 手动指定")
 
 
-# 商业水印：免费用户生成视频带平台水印（会员/管理员自动去除）
+# 本地免费版：水印由用户开关控制
 WATERMARK_TEXT = "AI 数字人 · 小团智能"
 
 # 数字人硬拦截词：行为违规（营销诱导/诈骗/赌博/违禁），命中直接拒绝生成。
@@ -3468,21 +3468,21 @@ def _dh_generate_audio(voice: dict, req, optimized_text: str, emotion: str, _rep
 
 
 def _dh_quota_setup(uid: str, req, role: str) -> tuple:
-    """商业配额扣费 + 记录ID + 水印策略。返回 (quota, record_id, conn, use_watermark)。"""
+    """额度扣费 + 记录ID + 水印策略。返回 (quota, record_id, conn, use_watermark)。"""
     from common.auth import consume_quota, get_quota_info
 
     quota = consume_quota(uid)
     if not quota.get("allowed"):
         raise HTTPException(
             402,
-            "今日数字人生成次数已用完，升级会员获取更多额度（专业版每日 200 次，至尊版不限量）",
+            "今日数字人生成次数已用完，可在次日 0 点自动恢复",
         )
     quota_info = get_quota_info(uid)
     record_id = f"dh_{uuid.uuid4().hex[:12]}"
     conn = get_db()
     _ensure_tables(conn)
-    membership = quota_info.get("membership", "free") if isinstance(quota_info, dict) else "free"
-    use_watermark = (membership == "free" and role != "admin") or bool(req.watermark)
+    # 本地免费版：水印完全由用户开关控制（无会员水印策略）
+    use_watermark = bool(req.watermark)
     return quota, record_id, conn, use_watermark
 
 
@@ -3697,7 +3697,7 @@ def _precheck_generate(req: GenerateRequest, uid: str, user: str) -> None:  # no
     qi = get_quota_info(uid) or {}
     remaining = qi.get("remaining_today")
     if remaining is not None and remaining <= 0:
-        raise HTTPException(402, "今日数字人生成次数已用完，升级会员获取更多额度（专业版每日 200 次，至尊版不限量）")
+        raise HTTPException(402, "今日数字人生成次数已用完，可在次日 0 点自动恢复")
     avatar = next((a for a in AVATARS if a["id"] == req.avatar_id), None)
     voice = _lookup_voice(user, req.voice_id)
     if not avatar and req.avatar_id.startswith("custom_"):
@@ -3885,7 +3885,7 @@ class BatchGenerateRequest(BaseModel):
     speed: float = Field(1.0, ge=0.5, le=2.0, description="语速")
     resolution: str = Field("720p", pattern="^(720p|1080p)$", description="视频分辨率")
     fps: int = Field(15, ge=10, le=30, description="帧率")
-    watermark: bool | None = Field(None, description="水印：None=按会员等级（免费用户加水印）")
+    watermark: bool | None = Field(None, description="水印：本地版由用户开关自由控制")
     engine: str = Field("2d", pattern="^(2d|live_portrait|sadtalker)$", description="引擎：2d=基础卡通渲染，live_portrait=照片数字人（需先创建照片形象），sadtalker=照片数字人高级版（3D 头部运动）")
     emotion: str = Field("auto", pattern="^(auto|neutral|happy|sad|angry|gentle|serious)$", description="情绪（v13.24）：auto=LLM自动判断，或手动指定")
 
@@ -4143,7 +4143,7 @@ async def create_batch(req: BatchGenerateRequest, current_user: dict = require_a
     qi = get_quota_info(uid) or {}
     remaining = qi.get("remaining_today")
     if remaining is not None and remaining <= 0:
-        raise HTTPException(402, "今日生成次数已用完，升级会员获取更多额度")
+        raise HTTPException(402, "今日生成次数已用完，可在次日 0 点自动恢复")
     # 形象名校验（zip 打包文件名使用）
     avatar = next((a for a in AVATARS if a["id"] == req.avatar_id), None)
     avatar_name = avatar["name"] if avatar else req.avatar_id

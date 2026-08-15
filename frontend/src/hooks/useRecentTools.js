@@ -4,15 +4,8 @@ import { useState, useEffect, useCallback } from 'react'
 // 记录 {path, label, icon, ts}，同页面去重置顶，上限 10 条，仅收录映射表内页面
 // v17-F：TOOL_META 同时供 App.jsx 路由级页面标题使用（单份数据源，两处消费）
 export const TOOL_META = {
-  '/workspace': { label: 'AI 工作台', icon: '⚡' },
-  '/board': { label: '需求看板', icon: '📋' },
-  '/projects': { label: '项目空间', icon: '📁' },
   '/artifacts': { label: '成果仓库', icon: '🗂️' },
   '/tasks': { label: '任务中心', icon: '✅' },
-  '/chat': { label: '智能协作', icon: '💬' },
-  '/agents': { label: 'Agent 列表', icon: '🤖' },
-  '/workflows': { label: 'Workflow 管理', icon: '🔀' },
-  '/knowledge-bases': { label: '知识库', icon: '📚' },
   '/digital-human': { label: 'AI 数字人', icon: '🎭' },
   '/meme': { label: '表情包工坊', icon: '😀' },
   '/music-factory': { label: '音乐工厂', icon: '🎵' },
@@ -30,10 +23,7 @@ export const TOOL_META = {
   '/pdf-tools': { label: 'PDF 工具集', icon: '📄' },
   '/mindmap': { label: 'AI 思维导图', icon: '🧠' },
   '/doc-qa': { label: 'AI 文档问答', icon: '📚' },
-  '/code-interpreter': { label: '代码解释器', icon: '💻' },
-  '/sandbox': { label: '沙箱运行', icon: '🧪' },
   '/web-search': { label: '联网搜索', icon: '🔍' },
-  '/batch-process': { label: '批量处理', icon: '📦' },
   '/tool-hub': { label: '工具中心', icon: '🧰' },
   '/seo': { label: 'SEO 分析', icon: '🚀' },
   '/data-analyzer': { label: '数据分析', icon: '📉' },
@@ -42,18 +32,13 @@ export const TOOL_META = {
   '/monitor': { label: '竞品监控', icon: '🛰️' },
   '/strategy': { label: '内容策略', icon: '🗓️' },
   '/video-analyzer': { label: '视频理解', icon: '🎥' },
-  '/ab-testing': { label: 'AB 测试', icon: '🧪' },
-  '/scheduler': { label: '定时任务', icon: '⏰' },
   '/notifications': { label: '通知中心', icon: '🔔' },
   '/favorites': { label: '收藏中心', icon: '❤️' },
-  '/usage-analytics': { label: '用量分析', icon: '📊' },
-  '/api-platform': { label: 'API 开放平台', icon: '🔑' },
   '/gallery': { label: '作品广场', icon: '🏞️' },
   '/growth': { label: '增长工坊', icon: '🎯' },
   '/records': { label: '使用记录', icon: '🗒️' },
   '/profile': { label: '个人中心', icon: '👤' },
   '/dashboard': { label: '数据看板', icon: '📊' },
-  '/pipelines': { label: '流水线', icon: '🔗' },
   '/publish': { label: '发布中心', icon: '🚀' },
   '/templates': { label: '模板市场', icon: '🗃️' },
   '/help': { label: '帮助中心', icon: '❓' },
@@ -62,7 +47,7 @@ export const TOOL_META = {
 const STORAGE_KEY = 'recent_tools_v1'
 const MAX_ITEMS = 10
 // 不追踪的通用页（首页/登录/分享/会员等非工具页）
-const EXCLUDED = new Set(['/home', '/login', '/share', '/membership', '/not-found'])
+const EXCLUDED = new Set(['/home', '/login', '/not-found'])
 
 function loadRecent() {
   try {

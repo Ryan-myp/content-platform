@@ -46,7 +46,6 @@ import {
   PenTool,
   MessageSquare,
   Layout,
-  Lock,
 } from 'lucide-react'
 
 const ICON_MAP = {
@@ -374,7 +373,7 @@ export default function ToolHubPage() {
                     onClick={() =>
                       navigate(
                         tool.locked
-                          ? '/membership'
+                          ? '/profile'
                           : tool.type === 'app'
                             ? tool.path
                             : `/tool/${tool.id}`
@@ -389,12 +388,6 @@ export default function ToolHubPage() {
                     <div className="absolute -top-1 -right-1">
                       <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
                     </div>
-                    {tool.locked && (
-                      <div className="absolute top-2 right-8 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 bg-amber-50 rounded flex items-center gap-0.5">
-                        <Lock className="w-3 h-3" />
-                        {tool.requires === 'vip' ? '至尊会员' : '专业会员'}
-                      </div>
-                    )}
                     <div
                       className={`w-10 h-10 rounded-lg bg-gradient-to-br ${colors.bg} flex items-center justify-center mb-2 group-hover:scale-110 transition-transform ${tool.locked ? 'opacity-60' : ''}`}
                     >
@@ -664,7 +657,7 @@ function ToolCard({ tool, colors, viewMode, isFavorite, onToggleFavorite, onClic
   const locked = tool.locked
   const handleClick = () => {
     if (locked) {
-      navigate('/membership')
+      navigate('/profile')
       return
     }
     onClick()
@@ -688,17 +681,6 @@ function ToolCard({ tool, colors, viewMode, isFavorite, onToggleFavorite, onClic
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="font-medium text-gray-900">{tool.name}</span>
-            {tool.type === 'app' && (
-              <Badge variant="info" size="sm">
-                专业版
-              </Badge>
-            )}
-            {locked && (
-              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 bg-amber-50 border border-amber-200 rounded-full">
-                <Lock className="w-3 h-3" />
-                {tool.requires === 'vip' ? '至尊会员' : '专业会员'}
-              </span>
-            )}
           </div>
           <div className="text-sm text-gray-500 truncate">{tool.description}</div>
         </div>
@@ -743,17 +725,6 @@ function ToolCard({ tool, colors, viewMode, isFavorite, onToggleFavorite, onClic
         >
           <Star className={`w-4 h-4 ${isFavorite ? 'fill-yellow-500' : ''}`} />
         </button>
-      )}
-      {locked && (
-        <div className="absolute top-2 right-2 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 bg-amber-50 rounded flex items-center gap-0.5 z-10">
-          <Lock className="w-3 h-3" />
-          {tool.requires === 'vip' ? '至尊会员' : '专业会员'}
-        </div>
-      )}
-      {tool.type === 'app' && !isFavorite && !locked && (
-        <div className="absolute top-2 right-2 px-1.5 py-0.5 text-[10px] font-medium text-brand-600 bg-brand-50 rounded">
-          专业版
-        </div>
       )}
       <div
         className={`w-10 h-10 rounded-lg bg-gradient-to-br ${colors.bg} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform ${locked ? 'opacity-60' : ''}`}

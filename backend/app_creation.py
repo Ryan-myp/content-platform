@@ -136,6 +136,50 @@ async def register(req: AuthRequest):
         raise HTTPException(400, str(e)) from e
 
 
+@app.post("/api/auth/auto")
+async def auto_login():
+    """本地版免登录：自动创建/复用本地用户并签发 token（无登录墙）。
+
+    本地单机使用场景下用户无需注册，首次打开即自动登录。
+    选择顺序：已有中转站 Key 的用户（避免升级后配置“丢失”）→ 本地默认用户 → 新建本地默认用户。
+    """
+    import secrets
+
+    from common.auth import _gen_user_id, create_access_token, hash_password
+    from common.db import get_db
+
+    username = os.environ.get("LOCAL_USERNAME", "local_user")
+    conn = get_db()
+    try:
+        row = conn.execute(
+            "SELECT id, username, role FROM users "
+            "WHERE relay_api_key IS NOT NULL AND relay_api_key != '' "
+            "ORDER BY created_at LIMIT 1"
+        ).fetchone()
+        if not row:
+            row = conn.execute(
+                "SELECT id, username, role FROM users WHERE username=?", (username,)
+            ).fetchone()
+    finally:
+        conn.close()
+    if not row:
+        uid = _gen_user_id()
+        pwd = secrets.token_urlsafe(24)
+        conn = get_db()
+        try:
+            conn.execute(
+                "INSERT INTO users (id, username, password_hash, role, active, created_at) "
+                "VALUES (?, ?, ?, 'user', 1, ?)",
+                (uid, username, hash_password(pwd), datetime.now().isoformat()),
+            )
+            conn.commit()
+            row = {"id": uid, "username": username, "role": "user"}
+        finally:
+            conn.close()
+    token = create_access_token(row["username"], {"user_id": row["id"], "role": row["role"]})
+    return {"access_token": token, "token_type": "bearer", "user": dict(row)}
+
+
 @app.get("/api/auth/me")
 async def me(current_user: dict = require_auth()):
     profile = get_user_profile(current_user.get("user_id", ""))

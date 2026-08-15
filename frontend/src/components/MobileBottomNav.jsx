@@ -4,7 +4,7 @@ import { Home, Send, TrendingUp, Image as ImageIcon, Layers, Wand2 } from 'lucid
 
 const NAV_ITEMS = [
   { path: '/home', label: '首页', icon: Home },
-  { path: '/workspace', label: 'AI工作台', icon: Wand2 },
+  { path: '/tool-hub', label: '工具', icon: Wand2 },
   { path: '/publish', label: '发布', icon: Send },
   { path: '/growth', label: '增长', icon: TrendingUp },
   { path: '/image-factory', label: '生图', icon: ImageIcon },

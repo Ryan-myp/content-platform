@@ -862,7 +862,7 @@ def _drama_quota_check(uid: str, avatar_mode: bool) -> None:
         if not quota.get("allowed"):
             raise HTTPException(
                 402,
-                "今日短剧生成次数已用完，升级会员获取更多额度（专业版每日 200 次，至尊版不限量）",
+                "今日短剧生成次数已用完，可在次日 0 点自动恢复",
             )
 
 

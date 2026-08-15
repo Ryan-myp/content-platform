@@ -4,18 +4,14 @@ import {
   ArrowLeft,
   Camera,
   Copy,
-  Crown,
   Flame,
   Gauge,
-  Gift,
   Loader2,
   Lock,
   Mail,
   Save,
-  Sparkles,
   TrendingUp,
   User as UserIcon,
-  Zap,
   KeyRound,
   ShieldCheck,
   CheckCircle2,
@@ -24,28 +20,14 @@ import { api } from '../lib/api'
 import { useToast } from '../lib/toast'
 import { useI18n, LanguageSwitcher } from '../i18n/index.jsx'
 
-// 会员等级元信息
+// 本地版信息（无会员等级概念，额度以后端配置为准）
 const MEMBERSHIP_META = {
   free: {
-    label: '免费版',
-    desc: '每日 30 次调用',
+    label: '本地版',
+    desc: '按每日额度限制',
     color: 'from-gray-500 to-gray-600',
     badge: 'bg-gray-100 text-gray-600',
     quota: 30,
-  },
-  pro: {
-    label: '专业版',
-    desc: '每日 200 次调用',
-    color: 'from-blue-500 to-indigo-600',
-    badge: 'bg-blue-50 text-blue-600',
-    quota: 200,
-  },
-  vip: {
-    label: '至尊版',
-    desc: '无限调用',
-    color: 'from-amber-500 to-orange-600',
-    badge: 'bg-amber-50 text-amber-600',
-    quota: 9999,
   },
 }
 
@@ -232,7 +214,7 @@ export default function ProfilePage({ user, onUserUpdate }) {
           </Link>
           <div>
             <h1 className="text-xl font-bold text-ink-900">个人中心</h1>
-            <p className="text-sm text-ink-500">管理个人资料、账号安全与会员额度</p>
+            <p className="text-sm text-ink-500">管理个人资料、每日额度与中转站 Key</p>
           </div>
         </div>
         <LanguageSwitcher />
@@ -266,20 +248,7 @@ export default function ProfilePage({ user, onUserUpdate }) {
                 {profile?.role}
               </span>
             </div>
-            {profile?.membership_expires && (
-              <p className="text-xs text-ink-400 mt-2">
-                <Crown className="w-3 h-3 inline mr-1 text-amber-500" />
-                会员至 {profile.membership_expires?.slice(0, 10)}
-              </p>
-            )}
-            {profile?.trial_expires && profile?.trial_expires > new Date().toISOString().slice(0, 10) && (
-              <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-                Pro 试用至 {profile.trial_expires.slice(0, 10)}（剩余 {Math.ceil((new Date(profile.trial_expires) - Date.now()) / 86400000)} 天）
-              </p>
-            )}
+
           </div>
 
           {/* 额度卡片 */}
@@ -295,13 +264,7 @@ export default function ProfilePage({ user, onUserUpdate }) {
                 {meta.label}
               </span>
             </div>
-            {meta.quota >= 9999 ? (
-              <div className="text-center py-4">
-                <Zap className="w-8 h-8 text-amber-500 mx-auto mb-2" />
-                <p className="text-sm text-ink-600 font-medium">至尊会员 · 无限调用</p>
-                <p className="text-xs text-ink-400 mt-1">畅享全部 AI 工具，不受次数限制</p>
-              </div>
-            ) : (
+            {(
               <>
                 <div className="flex items-end justify-between mb-2">
                   <div>
