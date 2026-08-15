@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import {
   Rocket,
+  CalendarClock,
+  BarChart3,
+  BookOpenCheck,
+  Save,
+  CopyPlus,
   Play,
   Download,
   Trash2,
@@ -61,6 +66,20 @@ export default function PipelinePage() {
   const [detailOpen, setDetailOpen] = useState(false)
   const [polling, setPolling] = useState(null)
   const pollRef = useRef(null)
+  // Phase 2：批量矩阵
+  const [schedBusy, setSchedBusy] = useState(false)
+  const [schedInterval, setSchedInterval] = useState(30)
+  const [metricsBusy, setMetricsBusy] = useState(false)
+  const [metricsForm, setMetricsForm] = useState({ views: '', likes: '', comments: '', shares: '', followers_gained: '' })
+  const [metricsOpen, setMetricsOpen] = useState(false)
+  const [reviewBusy, setReviewBusy] = useState(false)
+  const [review, setReview] = useState(null)
+  const [reviewOpen, setReviewOpen] = useState(false)
+  // Phase 3：模板资产化
+  const [templates, setTemplates] = useState([])
+  const [tplOpen, setTplOpen] = useState(false)
+  const [tplSaving, setTplSaving] = useState(false)
+  const [tplForm, setTplForm] = useState({ name: '', note: '', theme_pattern: '' })
 
   // 表单
   const [form, setForm] = useState({
@@ -107,10 +126,20 @@ export default function PipelinePage() {
     }
   }, [toast])
 
+  const loadTemplates = useCallback(async () => {
+    try {
+      const res = await api.get('/api/pipeline/templates')
+      setTemplates(res.data?.templates || [])
+    } catch (e) {
+      /* 静默 */
+    }
+  }, [])
+
   useEffect(() => {
     loadResources()
     loadProjects()
-  }, [loadResources, loadProjects])
+    loadTemplates()
+  }, [loadResources, loadProjects, loadTemplates])
 
   useEffect(() => () => clearInterval(pollRef.current), [])
 
@@ -183,6 +212,103 @@ export default function PipelinePage() {
     } catch (e) {
       toast.error(friendlyError(e))
     }
+  }
+
+  // ── Phase 2：批量矩阵 ──
+  const scheduleProject = async (id) => {
+    setSchedBusy(true)
+    try {
+      const res = await api.post(`/api/pipeline/projects/${id}/schedule`, {
+        interval_minutes: schedInterval,
+        title_prefix: '',
+      })
+      toast.success(res.data?.message || '已创建排期')
+    } catch (e) {
+      toast.error(friendlyError(e))
+    } finally {
+      setSchedBusy(false)
+    }
+  }
+
+  const submitMetrics = async (id) => {
+    const nums = (k) => Math.max(0, Number(metricsForm[k]) || 0)
+    setMetricsBusy(true)
+    try {
+      const res = await api.post(`/api/pipeline/projects/${id}/metrics`, {
+        views: nums('views'), likes: nums('likes'), comments: nums('comments'),
+        shares: nums('shares'), followers_gained: nums('followers_gained'),
+      })
+      toast.success(res.data?.message || '效果数据已录入')
+      setMetricsOpen(false)
+      setMetricsForm({ views: '', likes: '', comments: '', shares: '', followers_gained: '' })
+    } catch (e) {
+      toast.error(friendlyError(e))
+    } finally {
+      setMetricsBusy(false)
+    }
+  }
+
+  const runReview = async (id) => {
+    setReviewBusy(true)
+    setReview(null)
+    setReviewOpen(true)
+    try {
+      const res = await api.get(`/api/pipeline/projects/${id}/review?days=30`)
+      setReview(res.data)
+    } catch (e) {
+      toast.error(friendlyError(e))
+      setReviewOpen(false)
+    } finally {
+      setReviewBusy(false)
+    }
+  }
+
+  // ── Phase 3：模板资产化 ──
+  const saveTemplate = async (project) => {
+    setTplSaving(true)
+    try {
+      const payload = {
+        name: tplForm.name.trim() || `${project.theme} 模板`,
+        note: tplForm.note.trim(),
+        theme_pattern: tplForm.theme_pattern.trim() || project.theme,
+        platform: project.platform,
+        avatar_id: project.avatar_id,
+        voice_id: project.voice_id,
+        background_id: project.background_id,
+        scene_id: project.scene_id,
+        template_id: project.template_id || '',
+        engine: project.engine,
+        resolution: project.resolution,
+        speed: Number(project.speed || 1.0),
+        count: Math.max(1, Number(project.variant_count || 3)),
+      }
+      const res = await api.post('/api/pipeline/templates', payload)
+      toast.success(res.data?.message || '模板已保存')
+      setTplOpen(false)
+      setTplForm({ name: '', note: '', theme_pattern: '' })
+      await loadTemplates()
+    } catch (e) {
+      toast.error(friendlyError(e))
+    } finally {
+      setTplSaving(false)
+    }
+  }
+
+  const applyTemplate = (t) => {
+    setForm({
+      theme: t.theme_pattern || '',
+      platform: t.platform || 'douyin',
+      count: Math.max(1, Number(t.count || 3)),
+      avatar_id: t.avatar_id,
+      voice_id: t.voice_id,
+      background_id: t.background_id,
+      scene_id: t.scene_id,
+      engine: t.engine || '2d',
+      resolution: t.resolution || '720p',
+      speed: Number(t.speed || 1.0),
+    })
+    toast.success(`已套用模板「${t.name}」，填入主题即可生成`)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const videoUrl = (u) => (u ? (u.startsWith('http') ? u : API_BASE + u) : '')
@@ -314,6 +440,40 @@ export default function PipelinePage() {
           </span>
         </div>
       </Card>
+
+      {/* ── 口播模板库（Phase 3：资产化） ── */}
+      {templates.length > 0 && (
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-ink-900 flex items-center gap-2">
+              <Save className="w-4 h-4 text-brand-500" /> 我的口播模板
+              <Badge className="ml-1">{templates.length}</Badge>
+            </h3>
+            <button
+              onClick={() => setTplOpen(true)}
+              className="text-xs text-brand-600 hover:text-brand-700 font-medium"
+            >
+              + 新建模板
+            </button>
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {templates.map((t) => (
+              <div
+                key={t.id}
+                className="shrink-0 w-52 p-3 rounded-xl border border-ink-100 bg-ink-50/50 hover:border-amber-300 transition-colors"
+              >
+                <div className="text-sm font-medium text-ink-900 truncate">{t.name}</div>
+                <div className="text-[11px] text-ink-400 mt-0.5 line-clamp-1">{t.theme_pattern || t.note || '—'}</div>
+                <div className="mt-2 flex items-center gap-1.5">
+                  <Button variant="secondary" size="sm" onClick={() => applyTemplate(t)}>
+                    <CopyPlus className="w-3.5 h-3.5 mr-1" /> 套用
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* ── 项目列表 ── */}
       <div>
@@ -449,8 +609,130 @@ export default function PipelinePage() {
                 <RefreshCw className="w-4 h-4 mr-1.5" /> 重跑失败项（{detail.failed} 条）
               </Button>
             )}
+
+            {/* Phase 2：批量矩阵操作 */}
+            {detail.status !== 'running' && detail.success > 0 && (
+              <div className="border-t border-ink-100 pt-4 mt-2">
+                <div className="text-xs font-medium text-ink-500 mb-2">批量矩阵</div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button variant="secondary" size="sm" loading={schedBusy} onClick={() => scheduleProject(detail.id)}>
+                    <CalendarClock className="w-3.5 h-3.5 mr-1" /> 批量排期发布
+                  </Button>
+                  <select
+                    value={schedInterval}
+                    onChange={(e) => setSchedInterval(Number(e.target.value))}
+                    className="text-xs px-2 py-1.5 border border-ink-200 rounded-lg outline-none"
+                    title="相邻两条发布时间间隔"
+                  >
+                    {[15, 30, 60, 120, 360, 720].map((m) => (
+                      <option key={m} value={m}>{m} 分钟间隔</option>
+                    ))}
+                  </select>
+                  <Button variant="secondary" size="sm" onClick={() => setMetricsOpen(true)}>
+                    <BarChart3 className="w-3.5 h-3.5 mr-1" /> 录入效果
+                  </Button>
+                  <Button variant="secondary" size="sm" loading={reviewBusy} onClick={() => runReview(detail.id)}>
+                    <BookOpenCheck className="w-3.5 h-3.5 mr-1" /> AI 复盘
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setTplOpen(true)}>
+                    <Save className="w-3.5 h-3.5 mr-1" /> 存为模板
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
+      </Modal>
+
+      {/* ── 录入效果 Modal ── */}
+      <Modal open={metricsOpen} onClose={() => setMetricsOpen(false)} title="录入发布效果数据" width="md">
+        <div className="space-y-3">
+          <p className="text-xs text-ink-400">把发布后的数据回填到本项目，供 AI 复盘分析（每条视频共用该数据）。</p>
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              ['views', '播放量'], ['likes', '点赞'], ['comments', '评论'],
+              ['shares', '转发'], ['followers_gained', '涨粉'],
+            ].map(([k, label]) => (
+              <div key={k}>
+                <label className="block text-sm font-medium text-ink-700 mb-1">{label}</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={metricsForm[k]}
+                  onChange={(e) => setMetricsForm((f) => ({ ...f, [k]: e.target.value }))}
+                  placeholder="0"
+                  className="w-full px-3 py-2 border border-ink-200 rounded-xl outline-none focus:border-amber-500"
+                />
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="ghost" onClick={() => setMetricsOpen(false)}>取消</Button>
+            <Button variant="primary" loading={metricsBusy} onClick={() => submitMetrics(detail.id)}>
+              保存效果数据
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ── AI 复盘 Modal ── */}
+      <Modal open={reviewOpen} onClose={() => setReviewOpen(false)} title="AI 矩阵复盘" width="lg">
+        {reviewBusy ? (
+          <div className="py-10 flex justify-center">
+            <Loader2 className="w-6 h-6 animate-spin text-brand-500" />
+          </div>
+        ) : review ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-3 text-xs text-ink-400">
+              <span>数据点：{review.data_points}</span>
+              <span>总播放：{review.total_views}</span>
+              <span>总点赞：{review.total_likes}</span>
+              <span>总涨粉：{review.total_followers}</span>
+            </div>
+            <div className="prose prose-sm max-w-none text-ink-700 whitespace-pre-wrap leading-relaxed text-sm">
+              {review.report}
+            </div>
+          </div>
+        ) : null}
+      </Modal>
+
+      {/* ── 存为模板 Modal ── */}
+      <Modal open={tplOpen} onClose={() => setTplOpen(false)} title="保存为口播模板" width="md">
+        <div className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-ink-700 mb-1">模板名称 *</label>
+            <input
+              value={tplForm.name}
+              onChange={(e) => setTplForm((f) => ({ ...f, name: e.target.value }))}
+              placeholder={detail ? `${detail.theme} 模板` : '例如：美食种草口播'}
+              className="w-full px-3 py-2 border border-ink-200 rounded-xl outline-none focus:border-amber-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-ink-700 mb-1">主题模式（可选，{'{产品}'} 等占位符可替换）</label>
+            <input
+              value={tplForm.theme_pattern}
+              onChange={(e) => setTplForm((f) => ({ ...f, theme_pattern: e.target.value }))}
+              placeholder={detail ? detail.theme : '例如：{产品}的 3 个使用技巧'}
+              className="w-full px-3 py-2 border border-ink-200 rounded-xl outline-none focus:border-amber-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-ink-700 mb-1">备注（可选）</label>
+            <input
+              value={tplForm.note}
+              onChange={(e) => setTplForm((f) => ({ ...f, note: e.target.value }))}
+              placeholder="适用类目/场景…"
+              className="w-full px-3 py-2 border border-ink-200 rounded-xl outline-none focus:border-amber-500"
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="ghost" onClick={() => setTplOpen(false)}>取消</Button>
+            <Button variant="primary" loading={tplSaving} onClick={() => saveTemplate(detail || {})}>
+              <Save className="w-4 h-4 mr-1.5" /> 保存模板
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   )

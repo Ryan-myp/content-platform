@@ -21,6 +21,7 @@ from pydantic import BaseModel, Field
 
 from common.auth import require_auth  # noqa: E402
 from common.db import get_db, get_db_context  # noqa: E402
+from growth_engine import MetricsUpsertRequest  # noqa: E402
 
 router = APIRouter(prefix="/api/pipeline", tags=["口播短视频流水线"])
 
@@ -55,6 +56,7 @@ def _ensure_tables(conn) -> None:
             updated_at TEXT DEFAULT ''
         )"""
     )
+    _ensure_template_tables(conn)
     conn.execute(
         """CREATE TABLE IF NOT EXISTS video_project_items (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -494,3 +496,330 @@ async def delete_project(project_id: str, current_user: dict = require_auth()):
         return {"ok": True, "message": "项目已删除"}
     finally:
         conn.close()
+
+
+# ══════════════════════════════════════════════════════════════
+# Phase 2：批量矩阵 —— 自动排期发布 + 效果数据 + AI 复盘
+# ══════════════════════════════════════════════════════════════
+
+class PipelineScheduleRequest(BaseModel):
+    start_at: str = Field("", description="首条发布时间 ISO（空=从现在起 1 小时后）")
+    interval_minutes: int = Field(30, ge=5, le=1440, description="相邻两条发布时间间隔（分钟）")
+    platforms: list[str] = Field(default_factory=list, description="指定平台（空=沿用项目平台）")
+    title_prefix: str = Field("", max_length=40, description="标题前缀（默认用变体标题）")
+
+
+def _platform_publish_code(platform: str) -> str:
+    """流水线平台 → publishing 平台 code。"""
+    return {
+        "douyin": "douyin", "kuaishou": "kuaishou", "xiaohongshu": "xiaohongshu",
+        "shipinhao": "wechat", "bilibili": "bilibili",
+    }.get(platform, "douyin")
+
+
+@router.post("/projects/{project_id}/schedule")
+async def schedule_project(project_id: str, req: PipelineScheduleRequest, current_user: dict = require_auth()):
+    """批量排期：把项目成功视频按时间间隔批量创建发布排期（矩阵号自动错峰发布）。"""
+    user = current_user.get("username", "") if isinstance(current_user, dict) else ""
+    conn = get_db()
+    _ensure_tables(conn)
+    try:
+        proj = conn.execute(
+            "SELECT * FROM video_projects WHERE id=? AND user_id=?", (project_id, user)
+        ).fetchone()
+        if not proj:
+            raise HTTPException(404, "项目不存在")
+        if proj["status"] == "running":
+            raise HTTPException(400, "项目仍在生成中，请等视频全部生成后再排期")
+        items = conn.execute(
+            "SELECT * FROM video_project_items WHERE project_id=? AND status='success' ORDER BY idx",
+            (project_id,),
+        ).fetchall()
+        if not items:
+            raise HTTPException(400, "该项目没有成功生成的视频，无法排期")
+        if len(items) > 20:
+            items = items[:20]
+        # 计算发布时间序列
+        from datetime import datetime as _dt, timedelta as _td
+
+        try:
+            base = _dt.fromisoformat((req.start_at or "").replace("Z", "+00:00"))
+        except Exception:
+            base = _dt.now() + _td(hours=1)
+        interval = _td(minutes=max(5, min(1440, req.interval_minutes)))
+        platform = req.platforms[0] if req.platforms else _platform_publish_code(proj["platform"])
+        # 去重已排期（避免重复点击批量创建重复排期）
+        existing = {
+            r["title"] for r in conn.execute(
+                "SELECT title FROM publish_schedules WHERE user_id=? AND content_type='video'",
+                (user,),
+            ).fetchall()
+        }
+        created, skipped = [], 0
+        for i, it in enumerate(items):
+            title = (req.title_prefix + " " if req.title_prefix else "") + (it["title"] or f"口播视频 {i+1}")
+            if title in existing:
+                skipped += 1
+                continue
+            sched_id = f"sched_{uuid.uuid4().hex[:12]}"
+            conn.execute(
+                """INSERT INTO publish_schedules (id, user_id, platform, content_type, title, content,
+                   topics, asset_urls, account_id, scheduled_at, status, created_at)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,'pending',?)""",
+                (
+                    sched_id, user, platform, "video", title,
+                    it["content"] or "", "[]",
+                    json.dumps([it["video_url"]], ensure_ascii=False), "",
+                    (base + i * interval).isoformat(), _now(),
+                ),
+            )
+            created.append({"sched_id": sched_id, "title": title, "scheduled_at": (base + i * interval).isoformat()})
+        conn.commit()
+        return {
+            "ok": True,
+            "created": len(created),
+            "skipped": skipped,
+            "items": created,
+            "message": f"已为 {len(created)} 条视频创建排期（间隔 {req.interval_minutes} 分钟）"
+            + (f"，{skipped} 条已存在跳过" if skipped else ""),
+        }
+    finally:
+        conn.close()
+
+
+@router.post("/projects/{project_id}/metrics")
+async def upsert_project_metrics(project_id: str, req: MetricsUpsertRequest, current_user: dict = require_auth()):
+    """项目效果数据录入：把发布后的播放/点赞/评论等回填到项目，供 AI 复盘。"""
+    user = current_user.get("username", "") if isinstance(current_user, dict) else ""
+    conn = get_db()
+    _ensure_tables(conn)
+    try:
+        proj = conn.execute(
+            "SELECT * FROM video_projects WHERE id=? AND user_id=?", (project_id, user)
+        ).fetchone()
+        if not proj:
+            raise HTTPException(404, "项目不存在")
+        from growth_engine import _ensure_metrics_columns
+
+        _ensure_metrics_columns(conn)
+        # 每条成功视频对应一条 publish_metrics（record_id 用 dh_record_id 关联）
+        items = conn.execute(
+            "SELECT * FROM video_project_items WHERE project_id=? AND status='success' ORDER BY idx",
+            (project_id,),
+        ).fetchall()
+        saved = 0
+        for it in items:
+            rid = it["dh_record_id"] or f"vp_{project_id}_{it['idx']}"
+            existing = conn.execute(
+                "SELECT id FROM publish_metrics WHERE record_id=? ORDER BY created_at DESC LIMIT 1",
+                (rid,),
+            ).fetchone()
+            now = datetime.now().isoformat()
+            if existing:
+                conn.execute(
+                    "UPDATE publish_metrics SET views=?, likes=?, comments=?, shares=?, followers_gained=?, created_at=? WHERE id=?",
+                    (req.views, req.likes, req.comments, req.shares, req.followers_gained, now, existing["id"]),
+                )
+            else:
+                conn.execute(
+                    """INSERT INTO publish_metrics (id, record_id, platform, views, likes, comments, shares,
+                       followers_gained, created_at)
+                       VALUES (?,?,?,?,?,?,?,?,?)""",
+                    (
+                        f"pm_{uuid.uuid4().hex[:10]}", rid, proj["platform"],
+                        req.views, req.likes, req.comments, req.shares, req.followers_gained, now,
+                    ),
+                )
+            saved += 1
+        conn.commit()
+        return {"ok": True, "saved": saved, "message": f"已为 {saved} 条视频录入效果数据"}
+    finally:
+        conn.close()
+
+
+@router.get("/projects/{project_id}/review")
+async def review_project(project_id: str, days: int = 30, current_user: dict = require_auth()):
+    """项目 AI 复盘：基于该项目视频的聚合效果数据生成运营复盘报告。"""
+    user = current_user.get("username", "") if isinstance(current_user, dict) else ""
+    conn = get_db()
+    _ensure_tables(conn)
+    try:
+        proj = conn.execute(
+            "SELECT * FROM video_projects WHERE id=? AND user_id=?", (project_id, user)
+        ).fetchone()
+        if not proj:
+            raise HTTPException(404, "项目不存在")
+        items = conn.execute(
+            "SELECT * FROM video_project_items WHERE project_id=? AND status='success' ORDER BY idx",
+            (project_id,),
+        ).fetchall()
+        if not items:
+            return {"report": "该项目暂无成功视频，无法复盘。", "data_points": 0}
+        from growth_engine import _ensure_metrics_columns
+
+        _ensure_metrics_columns(conn)
+        data_lines = [f"选题「{proj['theme']}」共 {len(items)} 条口播视频：\n"]
+        total_v = total_l = total_f = 0
+        for it in items:
+            rid = it["dh_record_id"] or f"vp_{project_id}_{it['idx']}"
+            m = conn.execute(
+                "SELECT views, likes, comments, followers_gained FROM publish_metrics "
+                "WHERE record_id=? ORDER BY created_at DESC LIMIT 1",
+                (rid,),
+            ).fetchone()
+            v = m["views"] if m else 0
+            lk = m["likes"] if m else 0
+            fg = m["followers_gained"] if m else 0
+            total_v += v; total_l += lk; total_f += fg
+            data_lines.append(
+                f"- 《{(it['title'] or '无标题')[:30]}》 播放:{v} 点赞:{lk} 涨粉:{fg}"
+            )
+        data_lines.append(f"\n汇总：总播放 {total_v}，总点赞 {total_l}，总涨粉 {total_f}")
+        if total_v == 0 and total_l == 0:
+            return {
+                "report": "该项目视频尚未录入效果数据。发布后请到「发布中心」记录数据，或在本页「录入效果」填写播放/点赞/涨粉，即可生成 AI 复盘。",
+                "data_points": len(items),
+            }
+        from common.llm import call_llm
+
+        system = (
+            "你是一个短视频矩阵号运营专家。基于以下口播视频矩阵的数据，输出复盘报告："
+            "1.整体表现 2.哪条视频数据最好及其原因 3.下一轮迭代建议（选题/标题/口播结构/发布节奏）。"
+            "简洁中文，markdown 列表，不要编造没有的数据。"
+        )
+        try:
+            report = call_llm(system, "\n".join(data_lines), max_tokens=1200, temperature=0.6, timeout=90)
+        except Exception as e:
+            report = f"AI 复盘生成失败（{e}）。以下是原始数据：\n\n" + "\n".join(data_lines)
+        return {"report": report, "data_points": len(items), "total_views": total_v, "total_likes": total_l, "total_followers": total_f}
+    finally:
+        conn.close()
+
+
+# ══════════════════════════════════════════════════════════════
+# Phase 3：模板资产化 —— 把成功项目配置存为口播模板，一键复用/分享
+# ══════════════════════════════════════════════════════════════
+
+class PipelineTemplateRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=40, description="模板名称")
+    note: str = Field("", max_length=200, description="模板说明（适用场景）")
+    theme_pattern: str = Field("", max_length=200, description="主题模式（如：{产品} 的 3 个使用技巧）")
+    platform: str = Field("douyin")
+    avatar_id: str = Field("business-female")
+    voice_id: str = Field("zh-CN-XiaoxiaoNeural")
+    background_id: str = Field("tech")
+    scene_id: str = Field("product")
+    template_id: str = Field("")
+    engine: str = Field("2d")
+    resolution: str = Field("720p")
+    speed: float = Field(1.0, ge=0.5, le=2.0)
+    count: int = Field(3, ge=1, le=10)
+
+
+def _ensure_template_tables(conn) -> None:
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS pipeline_templates (
+            id TEXT PRIMARY KEY,
+            user_id TEXT DEFAULT '',
+            name TEXT DEFAULT '',
+            note TEXT DEFAULT '',
+            theme_pattern TEXT DEFAULT '',
+            platform TEXT DEFAULT 'douyin',
+            avatar_id TEXT DEFAULT 'business-female',
+            voice_id TEXT DEFAULT 'zh-CN-XiaoxiaoNeural',
+            background_id TEXT DEFAULT 'tech',
+            scene_id TEXT DEFAULT 'product',
+            template_id TEXT DEFAULT '',
+            engine TEXT DEFAULT '2d',
+            resolution TEXT DEFAULT '720p',
+            speed REAL DEFAULT 1.0,
+            count INTEGER DEFAULT 3,
+            source_project_id TEXT DEFAULT '',
+            created_at TEXT DEFAULT '',
+            updated_at TEXT DEFAULT ''
+        )"""
+    )
+
+
+@router.post("/templates")
+async def create_pipeline_template(req: PipelineTemplateRequest, current_user: dict = require_auth()):
+    """保存口播模板（把一套成功配置沉淀为可复用模板）。"""
+    user = current_user.get("username", "") if isinstance(current_user, dict) else ""
+    conn = get_db()
+    _ensure_template_tables(conn)
+    try:
+        tid = f"pt_{uuid.uuid4().hex[:10]}"
+        conn.execute(
+            """INSERT INTO pipeline_templates (id, user_id, name, note, theme_pattern, platform,
+               avatar_id, voice_id, background_id, scene_id, template_id, engine, resolution, speed, count, created_at, updated_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (
+                tid, user, req.name.strip(), req.note.strip(), req.theme_pattern.strip(),
+                req.platform, req.avatar_id, req.voice_id, req.background_id, req.scene_id,
+                req.template_id, req.engine, req.resolution, req.speed, req.count, _now(), _now(),
+            ),
+        )
+        conn.commit()
+        return {"ok": True, "id": tid, "message": f"模板「{req.name.strip()}」已保存，可在流水线一键复用"}
+    finally:
+        conn.close()
+
+
+@router.get("/templates")
+async def list_pipeline_templates(current_user: dict = require_auth()):
+    """口播模板列表。"""
+    user = current_user.get("username", "") if isinstance(current_user, dict) else ""
+    conn = get_db()
+    _ensure_template_tables(conn)
+    try:
+        rows = conn.execute(
+            "SELECT * FROM pipeline_templates WHERE user_id=? ORDER BY created_at DESC", (user,)
+        ).fetchall()
+        return {"templates": [dict(r) for r in rows]}
+    finally:
+        conn.close()
+
+
+@router.delete("/templates/{template_id}")
+async def delete_pipeline_template(template_id: str, current_user: dict = require_auth()):
+    """删除口播模板。"""
+    user = current_user.get("username", "") if isinstance(current_user, dict) else ""
+    conn = get_db()
+    _ensure_template_tables(conn)
+    try:
+        row = conn.execute(
+            "SELECT id FROM pipeline_templates WHERE id=? AND user_id=?", (template_id, user)
+        ).fetchone()
+        if not row:
+            raise HTTPException(404, "模板不存在")
+        conn.execute("DELETE FROM pipeline_templates WHERE id=?", (template_id,))
+        conn.commit()
+        return {"ok": True, "message": "模板已删除"}
+    finally:
+        conn.close()
+
+
+@router.get("/templates/{template_id}/export")
+async def export_pipeline_template(template_id: str, current_user: dict = require_auth()):
+    """导出模板 JSON（可分享/导入）。"""
+    user = current_user.get("username", "") if isinstance(current_user, dict) else ""
+    conn = get_db()
+    _ensure_template_tables(conn)
+    try:
+        row = conn.execute(
+            "SELECT * FROM pipeline_templates WHERE id=? AND user_id=?", (template_id, user)
+        ).fetchone()
+        if not row:
+            raise HTTPException(404, "模板不存在")
+        return {"template": {k: row[k] for k in (
+            "name", "note", "theme_pattern", "platform", "avatar_id", "voice_id",
+            "background_id", "scene_id", "template_id", "engine", "resolution", "speed", "count",
+        )}}
+    finally:
+        conn.close()
+
+
+@router.post("/templates/import")
+async def import_pipeline_template(req: PipelineTemplateRequest, current_user: dict = require_auth()):
+    """导入模板 JSON（复用他人分享的模板配置）。"""
+    return await create_pipeline_template(req, current_user)
