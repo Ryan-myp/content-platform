@@ -97,16 +97,6 @@ const ICONS = {
 // 默认导航（通用版兜底）
 const DEFAULT_NAV_ITEMS = [
   {
-    key: 'pipeline',
-    label: '口播视频工厂',
-    icon: Rocket,
-    color: 'from-rose-500 to-orange-500',
-    badge: '新',
-    items: [
-      { path: '/pipeline', label: '口播短视频工厂', icon: Rocket, pageId: 'pipeline' },
-    ],
-  },
-  {
     key: 'home',
     label: '工作台',
     icon: Home,
@@ -125,6 +115,7 @@ const DEFAULT_NAV_ITEMS = [
     icon: Wand2,
     color: 'from-accent-500 to-blue-600',
     items: [
+      { path: '/pipeline', label: '口播短视频工厂', icon: Rocket, pageId: 'pipeline' },
       { path: '/image-factory', label: '图片工厂', icon: ImageIcon, pageId: 'image-factory' },
       { path: '/video-factory', label: '视频工厂', icon: Film, pageId: 'video-factory' },
       { path: '/drama', label: '短剧工厂', icon: Clapperboard, pageId: 'drama' },

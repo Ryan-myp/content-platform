@@ -10,6 +10,7 @@ import { api } from '../lib/api'
 
 // 路由路径 → 页面注册表 id（与后端 permissions.PAGES 对齐）
 const PAGE_PATH_TO_ID = {
+  '/pipeline': 'pipeline',
   '/image-factory': 'image-factory',
   '/video-factory': 'video-factory',
   '/music-factory': 'music-factory',
