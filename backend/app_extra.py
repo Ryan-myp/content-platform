@@ -125,7 +125,7 @@ class ConfigSaveRequest(BaseModel):
 async def get_config(current_user: dict = require_auth()):
     """当前模型配置（本地版：模型全部来自用户中转站，未配置 Key 时列表为空）。"""
     from common.auth import get_user_profile
-    from common.config import get_model_list, get_model_config
+    from common.config import get_model_list
 
     uid = current_user.get("user_id", "")
     profile = get_user_profile(uid)
@@ -133,7 +133,6 @@ async def get_config(current_user: dict = require_auth()):
     models = get_model_list()  # [{name, note, base_url}] 来自用户中转站
     # 按功能模型偏好（用户自由切换，不写死）
     prefs = _load_model_prefs(uid)
-    cfg = get_model_config(prefs.get("default") or None)
     return {
         "model_name": prefs.get("default") or (models[0]["name"] if models else ""),
         "models": models,

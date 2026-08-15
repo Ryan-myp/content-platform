@@ -254,6 +254,30 @@ def _patch_config_relay_models() -> int:
             d + ' = os.environ.get("' + d + '", "")',
             src,
         )
+    # get_model_config：空模型名 → 取中转站模型列表第一个；无列表则明确报错
+    if '自动取用户中转站模型列表第一个' not in src:
+        anchor = '''    user_key = (user_relay or {}).get("api_key") or ""
+
+    for m in get_model_list():'''
+        inject = '''    user_key = (user_relay or {}).get("api_key") or ""
+
+    # 未指定模型名（文案/工具等 LLM 功能前端不传 model）：
+    # 自动取用户中转站模型列表第一个；无列表则明确报错（本地版不写死任何模型）
+    if not name:
+        _models = get_model_list()
+        if _models:
+            name = (_models[0].get("name") or "").strip()
+        if not name:
+            from fastapi import HTTPException
+
+            raise HTTPException(
+                400,
+                "未选择模型：请先在个人中心配置中转站 Key（模型将从中转站拉取），或先选择一个模型",
+            )
+
+    for m in get_model_list():'''
+        if anchor in src:
+            src = src.replace(anchor, inject, 1)
     # require_model 助手（工厂在未选择模型时给出清晰报错）
     if 'def require_model(' not in src:
         helper = '''

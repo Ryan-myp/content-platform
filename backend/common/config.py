@@ -223,6 +223,20 @@ def get_model_config(model_name: str | None = None) -> dict:
         pass
     user_key = (user_relay or {}).get("api_key") or ""
 
+    # 未指定模型名（文案/工具等 LLM 功能前端不传 model）：
+    # 自动取用户中转站模型列表第一个；无列表则明确报错（本地版不写死任何模型）
+    if not name:
+        _models = get_model_list()
+        if _models:
+            name = (_models[0].get("name") or "").strip()
+        if not name:
+            from fastapi import HTTPException
+
+            raise HTTPException(
+                400,
+                "未选择模型：请先在个人中心配置中转站 Key（模型将从中转站拉取），或先选择一个模型",
+            )
+
     for m in get_model_list():
         if m.get("name") == name:
             base = normalize_model_base(m.get("base_url") or "")
