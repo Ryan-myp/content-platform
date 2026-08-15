@@ -1,5 +1,5 @@
 {
-  "name": "@xiaotuan/code-platform",
+  "name": "@ryan-myp/code-platform",
   "version": "1.0.0",
   "description": "小团智能平台一键部署 — npx 启动 FastAPI 后端 + React 前端（免服务器）",
   "type": "module",

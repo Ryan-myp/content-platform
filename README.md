@@ -27,7 +27,7 @@ python app_creation.py        # 默认 8888，PORT 可覆盖
 
 ## npx 一键部署
 ```bash
-npx @xiaotuan/code-platform web
+npx @ryan-myp/code-platform web
 ```
 
 ## 升级机制（content-platform ↔ 主仓库）

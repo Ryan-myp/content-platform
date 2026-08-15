@@ -6,25 +6,25 @@ AI 驱动的智能研发与创作平台（FastAPI + React），**无需购买服
 
 ```bash
 # 完整启动（前端 + 后端）
-npx @xiaotuan/code-platform web
+npx @ryan-myp/code-platform web
 
 # 指定端口
-npx @xiaotuan/code-platform web --port 3000 --backend-port 8888
+npx @ryan-myp/code-platform web --port 3000 --backend-port 8888
 
 # 仅启动后端
-npx @xiaotuan/code-platform backend
+npx @ryan-myp/code-platform backend
 
 # 仅启动前端（对接已有后端）
-npx @xiaotuan/code-platform frontend --api http://127.0.0.1:8888
+npx @ryan-myp/code-platform frontend --api http://127.0.0.1:8888
 
 # 环境检查
-npx @xiaotuan/code-platform doctor
+npx @ryan-myp/code-platform doctor
 ```
 
 ## 工作原理
 
 ```
-npx @xiaotuan/code-platform web
+npx @ryan-myp/code-platform web
   ├─ ① 检测系统 Python 3.10+
   ├─ ② 引导/复用 .venv（首次自动 pip install requirements.txt）
   ├─ ③ 启动 Python 后端（FastAPI :8888）
@@ -43,14 +43,14 @@ npx 包天然可在任何 Node 环境运行：
 
 ```bash
 # 云服务器 / GitHub Codespaces / 免费 Node 沙箱
-npx @xiaotuan/code-platform web --port 8080
+npx @ryan-myp/code-platform web --port 8080
 ```
 
 配合 pm2/forever 可后台常驻：
 
 ```bash
 npm i -g pm2
-pm2 start "npx @xiaotuan/code-platform web" --name code-platform
+pm2 start "npx @ryan-myp/code-platform web" --name code-platform
 ```
 
 ## 发布到 npm
