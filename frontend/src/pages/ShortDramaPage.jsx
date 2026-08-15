@@ -114,6 +114,15 @@ export default function ShortDramaPage() {
   const [customScenes, setCustomScenes] = useState([])
   const [showCustom, setShowCustom] = useState(false)
   const [scriptData, setScriptData] = useState(null) // v13.29 AI 剧本工作台：{title, scenes[]}
+  // 红果短剧升级：小说导入 + 系列连载 + 角色圣经
+  const [novelText, setNovelText] = useState('')
+  const [novelBusy, setNovelBusy] = useState(false)
+  const [series, setSeries] = useState([])
+  const [seriesId, setSeriesId] = useState('')
+  const [seriesOpen, setSeriesOpen] = useState(false)
+  const [seriesName, setSeriesName] = useState('')
+  const [seriesGenre, setSeriesGenre] = useState('都市')
+  const [episodeNo, setEpisodeNo] = useState(1)
   const [scripting, setScripting] = useState(false)
   // v22 剧本题材模板库：爆款题材（人设/结构/风格/钩子）注入 AI 编剧
   const [dramaTpls, setDramaTpls] = useState([])
@@ -232,13 +241,105 @@ export default function ShortDramaPage() {
         })
         setGenerating(false)
         setScriptData(null) // v13.29 生成成功后关闭剧本工作台
-        toast.success(`短剧已生成：${data.title}（${data.scenes} 镜 · ${Math.round(data.duration || 0)} 秒）`)
+        const qc = data.qc || {}
+        const qcMsg = qc.ok === false && qc.findings?.length
+          ? `（QC 提示：${qc.findings[0]}）`
+          : '（QC 通过 ✓）'
+        toast.success(`短剧已生成：${data.title}（${data.scenes} 镜 · ${Math.round(data.duration || 0)} 秒）${qcMsg}`)
       },
       onError: (e) => {
         setGenerating(false)
         toast.error(`生成失败：${e.message}`)
       },
     })
+  }
+
+  // ── 红果短剧升级：小说转剧本 / 系列连载 / 角色圣经 ──
+  const loadSeries = async () => {
+    try {
+      const res = await api.get('/api/drama/series')
+      setSeries(res.data?.series || [])
+    } catch { /* 静默 */ }
+  }
+
+  useEffect(() => { loadSeries() }, [])
+
+  const novelToScript = async () => {
+    if (!novelText.trim()) {
+      toast.error('请先粘贴小说/故事原文')
+      return
+    }
+    setNovelBusy(true)
+    const customMin = parseFloat(customDur)
+    const durSeconds =
+      customDur.trim() && !Number.isNaN(customMin) ? Math.round(customMin * 60) : duration
+    const form = new FormData()
+    form.append('novel', novelText.trim())
+    form.append('duration', durSeconds)
+    form.append('episode', episodeNo || 1)
+    if (seriesId) form.append('series_id', seriesId)
+    if (title.trim()) form.append('title', title.trim())
+    try {
+      const res = await api.post('/api/drama/novel-to-script', form)
+      const data = res.data || {}
+      if (!data.scenes?.length) throw new Error('剧本为空，请重试')
+      setScriptData({
+        title: data.title || title.trim() || '未命名短剧',
+        scenes: data.scenes,
+        characters: data.characters || [],
+      })
+      toast.success(`小说已转为剧本：${data.title}（${data.scenes.length} 镜，第 ${data.episode} 集）`)
+      // 提示可保存角色圣经
+      if (seriesId && data.characters?.length) {
+        toast.info('可点击「保存角色到系列」锁定跨集一致性', 4000)
+      }
+    } catch (e) {
+      toast.error(`小说转剧本失败：${e.message || '请重试'}`)
+    } finally {
+      setNovelBusy(false)
+    }
+  }
+
+  const createSeries = async () => {
+    if (!seriesName.trim()) {
+      toast.error('请输入系列名')
+      return
+    }
+    try {
+      const res = await api.post('/api/drama/series', {
+        name: seriesName.trim(),
+        genre: seriesGenre,
+      })
+      setSeriesOpen(false)
+      setSeriesName('')
+      await loadSeries()
+      setSeriesId(res.data?.id || '')
+      toast.success(res.data?.message || '系列已创建')
+    } catch (e) {
+      toast.error(e.message || '创建失败')
+    }
+  }
+
+  const saveCharactersToSeries = async () => {
+    if (!seriesId) {
+      toast.error('请先选择或创建系列')
+      return
+    }
+    if (!scriptData?.characters?.length) {
+      toast.error('当前剧本没有角色表，无法保存')
+      return
+    }
+    try {
+      const res = await api.put(`/api/drama/series/${seriesId}/characters`, {
+        characters: scriptData.characters.map((c) => ({
+          id: c.id, name: c.name, gender: c.gender, age: c.age,
+          appearance: c.appearance, outfit: c.outfit, search: c.search,
+        })),
+      })
+      toast.success(res.data?.message || '角色圣经已保存')
+    } catch (e) {
+      toast.error(e.message || '保存失败')
+    }
   }
 
   // v13.29 AI 写剧本：主题 + 目标时长 → 剧本（含分镜/台词/画面描述），可编辑后确认生成
@@ -715,6 +816,14 @@ export default function ShortDramaPage() {
                     className="!px-2.5 !py-1 !text-xs"
                   />
                   <button
+                    onClick={saveCharactersToSeries}
+                    disabled={!scriptData?.characters?.length}
+                    title="把当前角色表保存到系列角色圣经（跨集一致）"
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs text-rose-600 hover:bg-rose-100 disabled:opacity-40"
+                  >
+                    🎭 保存角色到系列{seriesId ? '' : '（先选系列）'}
+                  </button>
+                  <button
                     onClick={copyScript}
                     title="复制剧本 Markdown"
                     className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs text-violet-600 hover:bg-violet-100"
@@ -1053,6 +1162,56 @@ export default function ShortDramaPage() {
                   <Wand2 className="w-4 h-4 mr-1.5" />
                   AI 写剧本（先出剧本可编辑）
                 </Button>
+                <details className="rounded-xl border border-rose-200 bg-rose-50/60">
+                  <summary className="cursor-pointer flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-rose-700 hover:bg-rose-100/50 rounded-xl">
+                    📖 从小说导入（红果短剧风）— 粘贴原文一键转剧本分镜
+                  </summary>
+                  <div className="px-3 pb-3 space-y-2">
+                    <textarea
+                      value={novelText}
+                      onChange={(e) => setNovelText(e.target.value)}
+                      rows={5}
+                      placeholder={'粘贴小说/故事原文（至少 30 字）…\n例：苏晚晚是苏家最不受宠的女儿，二十岁那年被父亲当作联姻筹码，嫁给城东商业巨鳄顾言深…'}
+                      className="w-full rounded-lg border border-rose-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-rose-400"
+                    />
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <select
+                        value={seriesId}
+                        onChange={(e) => setSeriesId(e.target.value)}
+                        className="text-xs px-2 py-1.5 rounded-lg border border-rose-200 bg-white outline-none"
+                      >
+                        <option value="">不关联系列（单集）</option>
+                        {series.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            系列：{s.name}（{s.character_count || 0} 角色）
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => setSeriesOpen(true)}
+                        className="text-[11px] text-rose-600 hover:text-rose-700"
+                      >
+                        + 新建系列
+                      </button>
+                      <span className="text-[11px] text-rose-400">第</span>
+                      <input
+                        type="number"
+                        min={1}
+                        value={episodeNo}
+                        onChange={(e) => setEpisodeNo(parseInt(e.target.value, 10) || 1)}
+                        className="w-14 text-xs px-2 py-1.5 rounded-lg border border-rose-200 outline-none"
+                      />
+                      <span className="text-[11px] text-rose-400">集</span>
+                      <Button variant="secondary" size="sm" loading={novelBusy} onClick={novelToScript} className="ml-auto">
+                        <Sparkles className="w-3.5 h-3.5 mr-1" />
+                        {novelBusy ? '转换中…' : '小说转剧本'}
+                      </Button>
+                    </div>
+                    <p className="text-[11px] text-rose-400/80">
+                      选择系列后，自动沿用该系列已保存的角色圣经（跨集角色一致）；生成后可一键保存角色到系列
+                    </p>
+                  </div>
+                </details>
                 {mode === 'avatar' && <Badge color="purple">数字人播报</Badge>}
                 {mode === 'material' && <Badge color="green">素材模式</Badge>}
                 {mode === 'illust' && <Badge color="purple">AI 插画模式</Badge>}
@@ -1346,6 +1505,37 @@ export default function ShortDramaPage() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* 系列创建 Modal（红果短剧连载容器） */}
+      <Modal open={seriesOpen} onClose={() => setSeriesOpen(false)} title="创建短剧系列（连载）" size="md">
+        <div className="space-y-3">
+          <p className="text-xs text-gray-400">
+            系列是连载短剧的容器：每集可复用系列角色圣经，保证跨集角色形象一致（红果短剧规范）。
+          </p>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">系列名 *</label>
+            <input
+              value={seriesName}
+              onChange={(e) => setSeriesName(e.target.value)}
+              placeholder="例：替嫁新娘"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-400"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">题材</label>
+            <input
+              value={seriesGenre}
+              onChange={(e) => setSeriesGenre(e.target.value)}
+              placeholder="例：都市甜宠复仇"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-400"
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button variant="ghost" onClick={() => setSeriesOpen(false)}>取消</Button>
+            <Button onClick={createSeries}>创建系列</Button>
+          </div>
+        </div>
       </Modal>
     </div>
   )
