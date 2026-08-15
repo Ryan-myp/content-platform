@@ -2466,7 +2466,10 @@ def analyze_sandbox_logs(project_id: str, current_user: dict = require_auth()):
         r = _sp.run(["podman", "logs", "--tail", "200", container], capture_output=True, text=True, timeout=15)
         logs = r.stdout if r.returncode == 0 else (r.stderr or "")
     else:
-        from sandbox import process_manager
+        try:
+            from sandbox import process_manager
+        except Exception:  # noqa: BLE001  sandbox 为研发/容器功能模块，当前版本未内置
+            raise HTTPException(400, "沙箱（容器）功能未在当前版本提供")
 
         logs = "\n".join(process_manager.get_logs(project_id, tail=200))
     if not logs.strip():

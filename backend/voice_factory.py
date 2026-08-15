@@ -386,6 +386,15 @@ def _master_audio(in_path: str, out_path: str, fmt: str = "mp3") -> None:
     subprocess.run(cmd, capture_output=True, stdin=subprocess.DEVNULL, timeout=180, check=True)
 
 
+def _srt_ts(seconds: float) -> str:
+    """秒 → SRT 时间戳（HH:MM:SS,mmm）。"""
+    ms = int(round(seconds * 1000))
+    h, rem = divmod(ms, 3600_000)
+    m, rem = divmod(rem, 60_000)
+    s, ms = divmod(rem, 1000)
+    return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
+
+
 def _make_srt(segs: list[str], durations: list[float], out_path: str) -> None:
     """生成标准 SRT 字幕：按分段文本与真实时长累计时间戳（商用配音包必备）。"""
 
@@ -641,7 +650,11 @@ async def _voice_generate_worker(payload: dict, progress: Callable | None = None
     from common.llm import log_usage
 
     log_usage("voice_generate", len(text), 0, elapsed)
-    _report(100, "配音已生成")
+    try:
+        from common.helpers import _notify_progress
+        _notify_progress(progress, 100, "配音已生成")
+    except Exception:
+        pass
     return {
         "id": filename,
         "artifact_id": art_id,

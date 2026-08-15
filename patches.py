@@ -321,9 +321,11 @@ def _patch_config_relay_base() -> int:
         return 0
     src = open(path, encoding='utf-8').read()
     if 'https://aixinghuo.net/v1' not in src:
-        old = 'os.environ.get("AGNES_API_BASE", "https://apihub.agnes-ai.com/v1")'
-        if old in src:
-            src = src.replace(old, 'os.environ.get("AGNES_API_BASE", "https://aixinghuo.net/v1")', 1)
+        # 主仓库源可能是 .com 或 .cn，统一归一为爱星火 aixinghuo.net
+        import re as _re
+        m = _re.search(r'os\.environ\.get\("AGNES_API_BASE", "https://apihub\.agnes-ai\.(com|cn)/v1"\)', src)
+        if m:
+            src = src.replace(m.group(0), 'os.environ.get("AGNES_API_BASE", "https://aixinghuo.net/v1")', 1)
             open(path, 'w', encoding='utf-8').write(src)
             return 1
     return 0
@@ -899,7 +901,7 @@ def _patch_provider_support() -> int:
             new_t = '''# 支持的供应商（模式 B：用户选择中转站，各自 base 平台写死，防绕开计费）
 RELAY_PROVIDERS = {
     "aixinghuo": "https://aixinghuo.net/v1",        # 爱星火中转站（默认）
-    "agnes": "https://apihub.agnes-ai.com/v1",      # AGNES 官方 API
+    "agnes": "https://apihub.agnes-ai.cn/v1",      # AGNES 官方 API
 }
 
 
@@ -1040,7 +1042,7 @@ def resolve_api_base() -> str:
 
     provider = relay.get("provider") or "aixinghuo"
     _base = RELAY_PROVIDERS.get(provider, _DEFAULT_BASE)
-    _register = "https://aixinghuo.net/" if provider == "aixinghuo" else "https://apihub.agnes-ai.com/"
+    _register = "https://aixinghuo.net/" if provider == "aixinghuo" else "https://apihub.agnes-ai.cn/"
     return {
         "configured": bool(relay.get("api_key")),
         "api_key_masked": _mask_key(relay["api_key"]) if relay.get("api_key") else "",

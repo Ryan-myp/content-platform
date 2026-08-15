@@ -147,7 +147,7 @@ export default function ProfilePage({ user }) {
 
             {!relayConfigured && (
               <a
-                href={provider === 'aixinghuo' ? 'https://aixinghuo.net/' : 'https://apihub.agnes-ai.com/'}
+                href={provider === 'aixinghuo' ? 'https://aixinghuo.net/' : 'https://apihub.agnes-ai.cn/'}
                 target="_blank"
                 rel="noreferrer"
                 className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 hover:border-indigo-300 transition-colors group"
@@ -202,7 +202,7 @@ export default function ProfilePage({ user }) {
                         {p === 'aixinghuo' ? '爱星火中转站' : 'AGNES 官方 API'}
                       </span>
                       <span className="block text-[11px] text-ink-400 mt-0.5">
-                        {p === 'aixinghuo' ? 'aixinghuo.net · 需充值' : 'apihub.agnes-ai.com · 有免费额度'}
+                        {p === 'aixinghuo' ? 'aixinghuo.net · 需充值' : 'apihub.agnes-ai.cn · 有免费额度'}
                       </span>
                     </button>
                   ))}

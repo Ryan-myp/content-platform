@@ -437,8 +437,8 @@ def _save_artifact(
 
 
 @router.get("/stats")
-async def get_stats():
-    """视频工厂统计：总数 + 通道就绪状态。"""
+async def get_stats(current_user: dict = require_auth()):
+    """视频工厂统计：总数 + 通道就绪状态（按当前用户的中转站 Key 判断）。"""
     from common.config import VIDEO_MODEL
 
     video_count = len(list(VIDEO_DIR.glob("*.mp4"))) if VIDEO_DIR.exists() else 0
@@ -823,10 +823,11 @@ async def create_video_task(
 
 
 @router.get("/result/{video_id}")
-async def get_video_result(video_id: str, project_id: str = ""):
+async def get_video_result(video_id: str, project_id: str = "", current_user: dict = require_auth()):
     """获取视频生成结果。
 
     project_id 作为 query 参数传入；视频生成完成时写入 artifacts 表关联到项目。
+    需要登录态以携带用户中转站 Key（resolve_api_key 按用户上下文解析）。
     """
     if not _available_channels():
         raise HTTPException(400, "未配置任何视频通道（resolve_api_key() / DASHSCOPE_API_KEY）")
@@ -841,6 +842,9 @@ async def get_video_result(video_id: str, project_id: str = ""):
         )
 
         if response.status_code not in [200, 202]:
+            # 视频不存在（如视频 id 输入错误/已过期）→ 404 而非 500
+            if response.status_code == 404:
+                raise HTTPException(404, "视频不存在或已过期")
             raise HTTPException(500, "获取视频结果失败，请稍后重试")
 
         data = response.json()

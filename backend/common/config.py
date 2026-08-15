@@ -197,7 +197,7 @@ def resolve_api_key() -> str:
 # 支持的供应商（模式 B：用户选择中转站，各自 base 平台写死，防绕开计费）
 RELAY_PROVIDERS = {
     "aixinghuo": "https://aixinghuo.net/v1",        # 爱星火中转站（默认）
-    "agnes": "https://apihub.agnes-ai.com/v1",      # AGNES 官方 API
+    "agnes": "https://apihub.agnes-ai.cn/v1",      # AGNES 官方 API
 }
 
 

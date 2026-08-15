@@ -221,7 +221,7 @@ async def get_my_relay(current_user: dict = require_auth()):
 
     provider = relay.get("provider") or "aixinghuo"
     _base = RELAY_PROVIDERS.get(provider, _DEFAULT_BASE)
-    _register = "https://aixinghuo.net/" if provider == "aixinghuo" else "https://apihub.agnes-ai.com/"
+    _register = "https://aixinghuo.net/" if provider == "aixinghuo" else "https://apihub.agnes-ai.cn/"
     return {
         "configured": bool(relay.get("api_key")),
         "api_key_masked": _mask_key(relay["api_key"]) if relay.get("api_key") else "",

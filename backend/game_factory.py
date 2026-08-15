@@ -669,6 +669,9 @@ def ensure_game_tables() -> None:
 
 
 @router.get("/templates")
+async def list_templates(current_user: dict = require_auth()):
+    """游戏模板列表（前端模板选择器数据源）。"""
+    return TEMPLATES
 
 
 @router.post("/{proj_id}/cover")
