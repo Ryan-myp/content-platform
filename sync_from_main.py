@@ -80,15 +80,26 @@ def sync_backend(verbose=True):
         ignore=shutil.ignore_patterns('__pycache__'),
     )
     synced.append('common/')
-    # 同步 requirements（合并）
+    # 同步 requirements（合并：主仓库 + content-platform 独有依赖如 pandas/yfinance）
     req_src = os.path.join(MAIN_BACKEND, 'requirements.txt')
     req_dst = os.path.join(CP_BACKEND, 'requirements.txt')
     if os.path.exists(req_src):
-        main_reqs = open(req_src, encoding='utf-8').read()
-        cp_reqs = open(req_dst, encoding='utf-8').read() if os.path.exists(req_dst) else ''
-        # 合并：保留主仓库全部依赖（content-platform 依赖是其子集）
-        if main_reqs not in cp_reqs:
-            open(req_dst, 'w', encoding='utf-8').write(main_reqs)
+        main_lines = [l.strip() for l in open(req_src, encoding='utf-8').read().splitlines() if l.strip()]
+        cp_lines = [l.strip() for l in open(req_dst, encoding='utf-8').read().splitlines() if l.strip()] if os.path.exists(req_dst) else []
+        # 合并去重，保留顺序（主仓库在前，content-platform 独有追加在后）
+        merged = []
+        seen = set()
+        for l in main_lines + cp_lines:
+            # 取依赖名（==/>= 前的包名）做去重键
+            key = l.split('>=')[0].split('==')[0].strip().lower()
+            if key and key not in seen and not l.startswith('#'):
+                seen.add(key)
+                merged.append(l)
+            elif l.startswith('#') and l not in merged:
+                merged.append(l)
+        new_reqs = '\n'.join(merged) + '\n'
+        if new_reqs != open(req_dst, encoding='utf-8').read() if os.path.exists(req_dst) else True:
+            open(req_dst, 'w', encoding='utf-8').write(new_reqs)
             synced.append('requirements.txt')
     if verbose:
         print(f'[sync] 后端同步完成：{len(synced)} 项')

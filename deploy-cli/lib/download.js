@@ -73,15 +73,20 @@ export async function ensureBackend() {
     process.exit(1)
   }
 
-  // 解压
+  // 解压：tarball 首层是 <repo>-<branch>/（如 content-platform-main/），
+  // strip 掉首层后得到 backend/、deploy-cli/ 等 → 解压到 CACHE_DIR 而非 BACKEND_CACHE，
+  // 否则会多一层（backend/backend/）导致找不到 main.py 与 requirements.txt。
   console.log('  📦 解压中...')
   if (existsSync(BACKEND_CACHE)) {
     execFileSync('rm', ['-rf', BACKEND_CACHE])
   }
-  mkdirSync(BACKEND_CACHE, { recursive: true })
-  execFileSync('tar', ['-xzf', tarball, '-C', BACKEND_CACHE, '--strip-components=1'])
+  mkdirSync(CACHE_DIR, { recursive: true })
+  execFileSync('tar', ['-xzf', tarball, '-C', CACHE_DIR, '--strip-components=1'])
   execFileSync('rm', [tarball])
 
+  if (!existsSync(BACKEND_CACHE)) {
+    throw new Error(`下载解压后未找到 backend/ 目录：${CACHE_DIR}`)
+  }
   console.log('  ✅ 后端源码就绪（缓存至 ' + BACKEND_CACHE + '）')
   return BACKEND_CACHE
 }
