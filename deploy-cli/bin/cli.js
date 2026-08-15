@@ -116,13 +116,14 @@ program
     }
 
     // ── 4. 启动前端静态服务 ────────────────────────────────
+    // frontendPort 需在 action 作用域可见（平台就绪横幅要用「实际」端口）
+    let frontendPort = wantFrontend ? Number(port) : 0
     if (wantFrontend) {
       if (!existsSync(join(DIST_PATH, 'index.html'))) {
         console.error(`  ❌ 前端构建产物缺失: ${DIST_PATH}`)
         process.exit(1)
       }
       // 前端端口冲突自动处理
-      let frontendPort = Number(port)
       const { isPortFree: _isFree } = await import('../lib/backend.js')
       if (!(await _isFree(frontendPort))) {
         const { findFreePort: _findFree } = await import('../lib/backend.js')
