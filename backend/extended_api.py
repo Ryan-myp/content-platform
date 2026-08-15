@@ -65,12 +65,13 @@ except ImportError:
         async def _gen():
             try:
                 full = await call_llm_async(system_prompt, user_prompt, max_tokens=max_tokens)
-                yield f"data: {_json.dumps({'delta': full})}\n\n"
-                yield f"data: {_json.dumps({'done': True, 'full': full})}\n\n"
+                yield "data: " + _json.dumps({"delta": full}) + "\n\n"
+                yield "data: " + _json.dumps({"done": True, "full": full}) + "\n\n"
             except Exception as e:
-                yield f"data: {_json.dumps({'error': str(e)})}\n\n"
+                yield "data: " + _json.dumps({"error": str(e)}) + "\n\n"
 
         return StreamingResponse(_gen(), media_type="text/event-stream")
+
 from task_queue import create_task, register_handler
 
 logger = logging.getLogger(__name__)

@@ -139,7 +139,7 @@ async def import_relay_models(relay_id: str, keep_global: bool = Query(False, de
     if not ok:
         raise HTTPException(502, f"拉取模型失败：{err}")
 
-    # 读取当前模型列表（独立版仓库无 prd_engine，改用 config 表直接读写）
+    # 读取当前模型列表
     try:
         from prd_engine import _get_models, _save_models
     except ImportError:
@@ -156,6 +156,7 @@ async def import_relay_models(relay_id: str, keep_global: bool = Query(False, de
                     "ON CONFLICT(key) DO UPDATE SET value=?",
                     (_json.dumps(models, ensure_ascii=False), _json.dumps(models, ensure_ascii=False)),
                 )
+
 
     current = _get_models()
     existing = {m.get("name") for m in current}

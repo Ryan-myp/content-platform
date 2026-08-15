@@ -29,3 +29,25 @@ python app_creation.py        # 默认 8888，PORT 可覆盖
 ```bash
 npx @xiaotuan/code-platform web
 ```
+
+## 升级机制（content-platform ↔ 主仓库）
+
+content-platform 是主仓库的「子集分发版」（内容创作 + 工具，不含研发/智能体/商业化 UI）。
+
+主仓库迭代新功能后，一键同步到 content-platform：
+
+```bash
+cd Code-Platform
+python3 content-platform/sync_from_main.py            # 同步后端模块
+python3 content-platform/sync_from_main.py --frontend  # 同步后端 + 前端页面
+```
+
+同步脚本自动：
+- 复制内容创作 + 工具模块（排除研发/智能体/支付/协作）
+- 保留 content-platform 的定制（精简 App.jsx/Sidebar、prd_engine 兜底等）
+- 生成同步报告
+
+## 本地免费版说明
+
+- 所有内容本地运行，无会员/分享/邀请等商业化 UI
+- AI 功能使用用户填写的中转站 Key（URL 平台写死），平台通过中转站 token 盈利

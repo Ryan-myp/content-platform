@@ -39,3 +39,6 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+
+# 前端构建产物（源码仓库不提交，deploy-cli/frontend-dist 除外）
+frontend/dist/
