@@ -1,6 +1,6 @@
 {
   "name": "@ryan-myp/content-platform",
-  "version": "1.0.47",
+  "version": "1.0.48",
   "description": "AI 星火内容创作平台一键部署 — 配置中转站 Key 后拉取模型，本地免费免登录（npx 启动 FastAPI + React）",
   "type": "module",
   "bin": {
