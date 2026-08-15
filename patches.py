@@ -337,6 +337,57 @@ def _patch_auth_relay_quota() -> int:
     return n
 
 
+def _patch_auth_stale_token() -> int:
+    """common/auth：旧 token（用户已删/旧后端残留）→ 401 触发免登录恢复；quota 防御性取值。"""
+    path = os.path.join(CP_BACKEND, 'common', 'auth.py')
+    if not os.path.exists(path):
+        return 0
+    src = open(path, encoding='utf-8').read()
+    n = 0
+    # 1. get_current_user 校验用户存在
+    if '登录状态已失效，请重新登录' not in src:
+        old = '''    payload = decode_access_token(token)
+    user_id = payload.get("user_id")
+    # 模式 B：加载用户中转站 key 并注入请求上下文（所有 AI 调用按用户走中转站 token）'''
+        new = '''    payload = decode_access_token(token)
+    user_id = payload.get("user_id")
+    # 校验用户仍存在（旧版本 token / 用户已被清理时 → 401，前端触发免登录恢复）
+    if user_id:
+        from common.db import get_db
+
+        _c = get_db()
+        try:
+            _exists = _c.execute("SELECT 1 FROM users WHERE id=?", (user_id,)).fetchone()
+        finally:
+            _c.close()
+        if not _exists:
+            raise HTTPException(401, "登录状态已失效，请重新登录")
+    # 模式 B：加载用户中转站 key 并注入请求上下文（所有 AI 调用按用户走中转站 token）'''
+        if old in src:
+            src = src.replace(old, new, 1)
+            n += 1
+    # 2. get_quota_info 返回块防御性取值（guest 档案不 500）
+    if 'profile.get("daily_quota", 30)' not in src:
+        old = '''        "daily_quota": profile["daily_quota"],
+        "bonus_quota": profile["bonus_quota"],
+        "used_today": profile["used_today"],
+        "remaining_today": profile["remaining_today"],
+        "total_usage": profile["total_usage"],
+    }'''
+        new = '''        "daily_quota": profile.get("daily_quota", 30),
+        "bonus_quota": profile.get("bonus_quota", 0),
+        "used_today": profile.get("used_today", 0),
+        "remaining_today": profile.get("remaining_today", 30),
+        "total_usage": profile.get("total_usage", 0),
+    }'''
+        if old in src:
+            src = src.replace(old, new, 1)
+            n += 1
+    if n:
+        open(path, 'w', encoding='utf-8').write(src)
+    return n
+
+
 def _patch_relay_save_models() -> int:
     """relay_api：保存用户 Key 时拉取中转站模型列表并保存；清除时清空模型。"""
     path = os.path.join(CP_BACKEND, 'relay_api.py')
@@ -550,6 +601,7 @@ def apply_all() -> int:
     total += _patch_relay_save_models()
     total += _patch_no_hardcoded_models()
     total += _patch_task_queue_relay()
+    total += _patch_auth_stale_token()
     return total
 
 

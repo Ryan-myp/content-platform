@@ -585,16 +585,16 @@ def get_quota_info(user_id: str) -> dict:
         except ValueError:
             days_left = None
     return {
-        "membership": profile["membership"],
+        "membership": profile.get("membership", "free"),
         "membership_expires": exp,
         "membership_days_left": days_left,
         "username": profile.get("username", ""),
         "role": profile.get("role", ""),  # 供前端识别 admin 豁免（水印/1080p/配额）
-        "daily_quota": profile["daily_quota"],
-        "bonus_quota": profile["bonus_quota"],
-        "used_today": profile["used_today"],
-        "remaining_today": profile["remaining_today"],
-        "total_usage": profile["total_usage"],
+        "daily_quota": profile.get("daily_quota", 30),
+        "bonus_quota": profile.get("bonus_quota", 0),
+        "used_today": profile.get("used_today", 0),
+        "remaining_today": profile.get("remaining_today", 30),
+        "total_usage": profile.get("total_usage", 0),
     }
 
 
@@ -1130,6 +1130,17 @@ async def get_current_user(
         return _auth_by_api_key(token)
     payload = decode_access_token(token)
     user_id = payload.get("user_id")
+    # 校验用户仍存在（旧版本 token / 用户已被清理时 → 401，前端触发免登录恢复）
+    if user_id:
+        from common.db import get_db
+
+        _c = get_db()
+        try:
+            _exists = _c.execute("SELECT 1 FROM users WHERE id=?", (user_id,)).fetchone()
+        finally:
+            _c.close()
+        if not _exists:
+            raise HTTPException(401, "登录状态已失效，请重新登录")
     # 模式 B：加载用户中转站 key 并注入请求上下文（所有 AI 调用按用户走中转站 token）
     try:
         relay = get_user_relay_config(user_id)
