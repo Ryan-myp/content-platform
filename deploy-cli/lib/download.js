@@ -6,7 +6,7 @@
  *
  * 这样 npm 包保持轻量（仅前端 7MB），后端源码独立分发。
  */
-import { existsSync, mkdirSync, createWriteStream } from 'node:fs'
+import { existsSync, mkdirSync, createWriteStream, readFileSync, writeFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { execFileSync } from 'node:child_process'
@@ -25,6 +25,8 @@ export const GITHUB_URL = `https://github.com/${REPO_OWNER}/${REPO_NAME}/archive
 // 本地缓存目录
 export const CACHE_DIR = join(os.homedir(), '.cache', 'code-platform')
 export const BACKEND_CACHE = join(CACHE_DIR, 'backend')
+// 后端缓存对应的 npm 包版本标记（升级时自动失效并重新下载）
+const BACKEND_VERSION_MARKER = join(CACHE_DIR, '.backend_version')
 
 /**
  * 定位后端目录（backend/）
@@ -36,9 +38,26 @@ export function findLocalBackend() {
   if (existsSync(join(repoBackend, 'main.py')) || existsSync(join(repoBackend, 'app_creation.py'))) {
     return { path: repoBackend, source: 'repo' }
   }
-  // 2. 本地缓存
+  // 2. 本地缓存（带 npm 版本校验：包升级后自动重下，避免旧后端无新接口）
   if (existsSync(join(BACKEND_CACHE, 'main.py')) || existsSync(join(BACKEND_CACHE, 'app_creation.py'))) {
-    return { path: BACKEND_CACHE, source: 'cache' }
+    const markerOk = (() => {
+      try {
+        const pkgVersion = JSON.parse(
+          readFileSync(join(__dirname, '..', 'package.json'), 'utf-8')
+        ).version
+        const cached = existsSync(BACKEND_VERSION_MARKER)
+          ? readFileSync(BACKEND_VERSION_MARKER, 'utf-8').trim()
+          : ''
+        return cached === pkgVersion
+      } catch {
+        return true // 版本读取异常时保守复用缓存（不强制重下）
+      }
+    })()
+    if (markerOk) {
+      return { path: BACKEND_CACHE, source: 'cache' }
+    }
+    console.log(`  🔄 npm 包已升级：后端缓存将刷新（删除旧缓存）`)
+    try { execFileSync('rm', ['-rf', BACKEND_CACHE]) } catch {}
   }
   return null
 }
@@ -88,6 +107,13 @@ export async function ensureBackend() {
     throw new Error(`下载解压后未找到 backend/ 目录：${CACHE_DIR}`)
   }
   console.log('  ✅ 后端源码就绪（缓存至 ' + BACKEND_CACHE + '）')
+  // 记录后端缓存对应的 npm 包版本（下次启动据此判断是否需要刷新）
+  try {
+    const pkgVersion = JSON.parse(
+      readFileSync(join(__dirname, '..', 'package.json'), 'utf-8')
+    ).version
+    writeFileSync(BACKEND_VERSION_MARKER, pkgVersion)
+  } catch {}
   return BACKEND_CACHE
 }
 
