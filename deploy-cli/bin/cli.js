@@ -79,9 +79,9 @@ program
     // ── 3. 启动后端 ────────────────────────────────────────
     let backendUrl = null
     if (wantBackend) {
-      backendUrl = `http://127.0.0.1:${backendPort}`
-      await startBackend(venvPython, backendPort)
-      await waitForBackend(backendPort, 120)
+      const actualBackendPort = await startBackend(venvPython, Number(backendPort))
+      backendUrl = `http://127.0.0.1:${actualBackendPort}`
+      await waitForBackend(actualBackendPort, 120)
       console.log(`  ✅ 后端已就绪: ${backendUrl}`)
     }
 
@@ -91,8 +91,21 @@ program
         console.error(`  ❌ 前端构建产物缺失: ${DIST_PATH}`)
         process.exit(1)
       }
-      await startFrontend(DIST_PATH, Number(port), backendUrl)
-      console.log(`  ✅ 前端静态服务已启动: http://localhost:${port}`)
+      // 前端端口冲突自动处理
+      let frontendPort = Number(port)
+      const { isPortFree: _isFree } = await import('../lib/backend.js')
+      if (!(await _isFree(frontendPort))) {
+        const { findFreePort: _findFree } = await import('../lib/backend.js')
+        const free = await _findFree(frontendPort)
+        if (free === null) {
+          console.error(`  ❌ 端口 ${frontendPort}~${frontendPort + 9} 全部被占用，请用 --port 指定其他端口`)
+          process.exit(1)
+        }
+        console.log(`  ⚠️  前端端口 ${frontendPort} 已被占用，改用 ${free}`)
+        frontendPort = free
+      }
+      await startFrontend(DIST_PATH, frontendPort, backendUrl)
+      console.log(`  ✅ 前端静态服务已启动: http://localhost:${frontendPort}`)
     }
 
     console.log('')
@@ -102,6 +115,8 @@ program
     if (wantBackend) console.log(`     ⚙️ 后端:  ${backendUrl}`)
     console.log('')
     console.log('  按 Ctrl+C 停止服务')
+    console.log('')
+    console.log('  💡 自定义端口：npx @ryan-myp/code-platform web --port 8080 --backend-port 9000')
     console.log('')
   })
 
@@ -117,9 +132,9 @@ program
       process.exit(1)
     }
     const venvPython = await bootstrapPython(false)
-    await startBackend(venvPython, options.port)
-    await waitForBackend(options.port, 120)
-    console.log(`✅ 后端已就绪: http://127.0.0.1:${options.port}`)
+    const actualPort = await startBackend(venvPython, Number(options.port))
+    await waitForBackend(actualPort, 120)
+    console.log(`✅ 后端已就绪: http://127.0.0.1:${actualPort}`)
   })
 
 program
