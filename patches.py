@@ -469,6 +469,9 @@ def _patch_no_hardcoded_models() -> int:
         ('short_drama.py',
          '        body = {\n            "model": IMAGE_MODEL,',
          '        body = {\n            "model": require_model(IMAGE_MODEL, "图片"),'),
+        ('ai_video_api.py',
+         '    body = {\n        "model": "agnes-video-v2.0",',
+         '    from common.config import require_model\n\n    body = {\n        "model": require_model(payload.get("model") or None, "视频"),'),
     ]
     n = 0
     for fname, old_t, new_t in edits:

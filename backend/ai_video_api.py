@@ -165,8 +165,10 @@ def _agnes_avatar_submit(payload: dict) -> str:
     if (num_frames - 1) % 8 != 0:
         num_frames = ((num_frames - 1) // 8) * 8 + 1
 
+    from common.config import require_model
+
     body = {
-        "model": "agnes-video-v2.0",
+        "model": require_model(payload.get("model") or None, "视频"),
         "prompt": prompt,
         "width": width,
         "height": height,
