@@ -403,6 +403,36 @@ def _patch_video_templates_free() -> int:
     return n
 
 
+def _patch_template_store_free() -> int:
+    """template_store：图片模板渲染鉴权放行（本地版无计费）。"""
+    path = os.path.join(CP_BACKEND, 'template_store.py')
+    if not os.path.exists(path):
+        return 0
+    src = open(path, encoding='utf-8').read()
+    if '本地版不收费，所有模板可直接渲染' in src:
+        return 0
+    old_t = '''    pricing = get_pricing(template)
+    if not is_paid(pricing):
+        return pricing
+    conn = get_db()
+    _ensure_tables(conn)
+    acc = user_access(conn, username or "", template.get("id", ""))
+    conn.close()
+    if acc is None:
+        raise HTTPException(
+            402,
+            f"该模板为付费模板，请先购买（按次 {pricing['once']} / 按天 {pricing['day']} / "
+            f"按月 {pricing['month']} 积分）",
+        )
+    return pricing'''
+    new_t = '''    return get_pricing(template)  # 本地版不收费，所有模板可直接渲染'''
+    if old_t in src:
+        src = src.replace(old_t, new_t, 1)
+        open(path, 'w', encoding='utf-8').write(src)
+        return 1
+    return 0
+
+
 def _patch_auth_stale_token() -> int:
     """common/auth：旧 token（用户已删/旧后端残留）→ 401 触发免登录恢复；quota 防御性取值。"""
     path = os.path.join(CP_BACKEND, 'common', 'auth.py')
@@ -669,6 +699,7 @@ def apply_all() -> int:
     total += _patch_task_queue_relay()
     total += _patch_auth_stale_token()
     total += _patch_video_templates_free()
+    total += _patch_template_store_free()
     return total
 
 

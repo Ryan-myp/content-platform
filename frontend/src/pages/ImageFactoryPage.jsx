@@ -908,7 +908,7 @@ export default function ImageFactoryPage() {
     layers: [], // 图层对象数组（可视化编辑器维护）
     layerJson: '', // 高级模式 JSON 文本
     showJson: false, // 是否展开高级 JSON 编辑
-    pricing: { mode: 'free', once: 0, day: 0, month: 0 }, // 市场定价（积分）
+    pricing: { mode: 'free', once: 0, day: 0, month: 0 },
   })
   const [selectedLayerIdx, setSelectedLayerIdx] = useState(-1) // 可视化编辑选中的图层
   const [templateSaving, setTemplateSaving] = useState(false)
@@ -1519,7 +1519,6 @@ export default function ImageFactoryPage() {
         background_image: templateForm.background_image || '',
         background_darken: Number(templateForm.background_darken) || 0,
         layers,
-        // 市场定价：免费或按次/按天/按月（积分），同步到模板市场
         pricing: templateForm.pricing || { mode: 'free', once: 0, day: 0, month: 0 },
       }
       let res
@@ -3771,76 +3770,6 @@ export default function ImageFactoryPage() {
                 ))}
               </div>
             </div>
-          </div>
-          {/* 市场定价（商业化）：免费或按次/按天/按月，保存后同步到模板市场 */}
-          <div className="rounded-xl border border-gray-200 p-4">
-            <div className="flex items-center justify-between mb-3">
-              <label className="text-sm font-medium text-gray-700">市场定价（积分）</label>
-              <span className="text-[11px] text-gray-400">
-                收费模板将在模板市场展示价格，用户购买/订阅后才能使用
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {[
-                ['free', '免费', '所有人可用'],
-                ['once', '按次·永久', '购买后永久可用'],
-                ['day', '按天订阅', '1 天有效期'],
-                ['month', '按月订阅', '30 天有效期'],
-              ].map(([id, label, tip]) => (
-                <label
-                  key={id}
-                  className={`flex items-start gap-2 px-3 py-2 rounded-xl border cursor-pointer transition-all ${
-                    templateForm.pricing?.mode === id
-                      ? 'border-violet-500 bg-violet-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    checked={templateForm.pricing?.mode === id}
-                    onChange={() =>
-                      setTemplateForm({
-                        ...templateForm,
-                        pricing: { ...(templateForm.pricing || {}), mode: id },
-                      })
-                    }
-                    className="mt-0.5"
-                  />
-                  <span>
-                    <span className="block text-xs font-medium text-gray-800">{label}</span>
-                    <span className="block text-[10px] text-gray-400">{tip}</span>
-                  </span>
-                </label>
-              ))}
-            </div>
-            {templateForm.pricing?.mode !== 'free' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
-                {[
-                  ['once', '按次价格'],
-                  ['day', '按天价格'],
-                  ['month', '按月价格'],
-                ].map(([key, label]) => (
-                  <div key={key}>
-                    <label className="block text-xs text-gray-500 mb-1">{label}（积分）</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={templateForm.pricing?.[key] || 0}
-                      onChange={(e) =>
-                        setTemplateForm({
-                          ...templateForm,
-                          pricing: {
-                            ...(templateForm.pricing || {}),
-                            [key]: Math.max(0, Number(e.target.value) || 0),
-                          },
-                        })
-                      }
-                      className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 outline-none text-sm"
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
           {/* 主体三栏：左=背景+图层 / 中=画布实时预览 / 右=图层属性（编辑与预览同屏） */}
           <div className="grid grid-cols-1 lg:grid-cols-[250px_1fr_300px] gap-5">

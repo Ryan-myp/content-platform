@@ -161,21 +161,8 @@ def user_access(conn, username: str, template_id: str) -> dict | None:
 
 
 def check_render_access(username: str, template: dict) -> dict:
-    """渲染鉴权：收费模板无有效权限抛 402。返回 pricing 供批量逻辑扣费参考。"""
-    pricing = get_pricing(template)
-    if not is_paid(pricing):
-        return pricing
-    conn = get_db()
-    _ensure_tables(conn)
-    acc = user_access(conn, username or "", template.get("id", ""))
-    conn.close()
-    if acc is None:
-        raise HTTPException(
-            402,
-            f"该模板为付费模板，请先购买（按次 {pricing['once']} / 按天 {pricing['day']} / "
-            f"按月 {pricing['month']} 积分）",
-        )
-    return pricing
+    """渲染鉴权（本地免费版：无计费，全部模板直接可用）。"""
+    return get_pricing(template)  # 本地版不收费，所有模板可直接渲染
 
 
 def record_usage(template_id: str) -> None:

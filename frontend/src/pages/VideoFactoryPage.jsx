@@ -2188,7 +2188,7 @@ export default function VideoFactoryPage() {
         </div>
       </Modal>
 
-      {/* v21 视频模板渲染 Modal：预览 + 变量编辑 + 购买授权 + 一键成片 */}
+      {/* v21 视频模板渲染 Modal：预览 + 变量编辑 + 一键成片 */}
       <Modal
         open={!!vtplModal}
         onClose={() => setVtplModal(null)}
@@ -2223,9 +2223,6 @@ export default function VideoFactoryPage() {
                 <div className="text-gray-700">{vtplModal.desc}</div>
                 <div className="text-gray-400">
                   规格：{vtplModal.width}×{vtplModal.height} · {vtplModal.fps}fps · 成片约 {vtplModal.duration}s
-                  {vtplModal.pricing?.mode !== 'free'
-                    ? ` · ${vtplModal.pricing_label}（按次 ${vtplModal.pricing.once} / 按天 ${vtplModal.pricing.day} / 按月 ${vtplModal.pricing.month} 积分）`
-                    : ' · 免费'}
                 </div>
               </div>
               {/* 渲染结果播放器 */}

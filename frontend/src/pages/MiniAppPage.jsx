@@ -425,7 +425,7 @@ export default function MiniAppPage() {
                 <textarea
                   value={requirement}
                   onChange={(e) => setRequirement(e.target.value)}
-                  placeholder="描述你要做的功能，如：一个咖啡店点单小程序，展示菜单、支持加购物车、提交订单，要有会员积分功能…"
+                  placeholder="描述你要做的功能，如：一个咖啡店点单小程序，展示菜单、支持加购物车、提交订单，要有会员功能…"
                   rows={6}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"
                 />
