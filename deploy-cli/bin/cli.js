@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 小团智能平台（Code-Platform）一键部署 CLI
+ * AI 星火（Code-Platform）一键部署 CLI
  *
  * 用法：
  *   npx @xiaotuan/code-platform web            # 完整启动（前端 + 后端）
@@ -64,7 +64,7 @@ async function checkLatestVersion() {
 const program = new Command()
 program
   .name('code-platform')
-  .description('小团智能平台 — 内容创作一键部署（本地免费、免登录）')
+  .description('AI 星火 — 内容创作一键部署（本地免费、免登录）')
   .version(PKG_VERSION)
 
 program
@@ -81,7 +81,7 @@ program
     const wantBackend = options.backend !== false
 
     console.log('')
-    console.log('  🚀 小团智能平台 · 一键部署')
+    console.log('  🚀 AI 星火 · 一键部署')
     console.log('  ═══════════════════════════════════')
 
     // ── 1. 检测 Python ─────────────────────────────────────
