@@ -136,6 +136,9 @@ export default function ShortDramaPage() {
   const [avatars, setAvatars] = useState([])
   const [playing, setPlaying] = useState(null)
   const [srcCfg, setSrcCfg] = useState(null)
+  // Pexels 内联配置（短剧素材模式）
+  const [pexelsInput, setPexelsInput] = useState('')
+  const [pexelsBusy, setPexelsBusy] = useState(false)
   // v15 分镜表导出 + 素材清单
   const [exportingShots, setExportingShots] = useState(false)
   const [showManifest, setShowManifest] = useState(false)
@@ -263,6 +266,26 @@ export default function ShortDramaPage() {
   }
 
   useEffect(() => { loadSeries() }, [])
+
+  const savePexelsInline = async () => {
+    if (!pexelsInput.trim()) {
+      toast.error('请先粘贴 Pexels API Key')
+      return
+    }
+    setPexelsBusy(true)
+    try {
+      const res = await api.put('/api/relay/me/pexels', { api_key: pexelsInput.trim() })
+      setPexelsInput('')
+      // 刷新素材源状态
+      const cfg = await api.get('/api/drama/config')
+      setSrcCfg(cfg.data)
+      toast.success(res.data.message || 'Pexels Key 已保存，素材模式已启用')
+    } catch (e) {
+      toast.error(e.message || 'Pexels Key 保存失败')
+    } finally {
+      setPexelsBusy(false)
+    }
+  }
 
   const novelToScript = async () => {
     if (!novelText.trim()) {
@@ -740,10 +763,32 @@ export default function ShortDramaPage() {
               </div>
             )}
             {srcCfg && !srcCfg.pexels_configured && (
-              <p className="mt-1.5 text-[11px] text-amber-600 leading-relaxed">
-                免费注册 https://www.pexels.com/api/ 获取 Key 后填入 backend/.env 的 PEXELS_API_KEY 并重启服务，
-                即可启用真实视频素材；或将素材（*关键词*.mp4/jpg）放入 backend/drama_factory/materials/ 目录
-              </p>
+              <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50/60 p-3 space-y-2">
+                <p className="text-[11px] text-amber-700 leading-relaxed">
+                  当前未配置 Pexels Key，短剧将回退本地素材/渐变卡片。配置后可启用真实竖屏视频素材（每镜自动匹配画面）。
+                </p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="password"
+                    value={pexelsInput}
+                    onChange={(e) => setPexelsInput(e.target.value)}
+                    placeholder="粘贴 Pexels API Key（pexels.com/api 免费注册）"
+                    className="flex-1 min-w-0 px-3 py-2 rounded-lg border border-amber-300 bg-white text-xs focus:outline-none focus:ring-2 focus:ring-amber-400"
+                    autoComplete="off"
+                  />
+                  <button
+                    onClick={savePexelsInline}
+                    disabled={pexelsBusy || !pexelsInput.trim()}
+                    className="shrink-0 inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-amber-500 text-white text-xs font-medium hover:bg-amber-600 disabled:opacity-50"
+                  >
+                    {pexelsBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                    保存并启用
+                  </button>
+                </div>
+                <p className="text-[10px] text-amber-500">
+                  也可在「个人中心 → Pexels 素材 Key」配置；或把素材（*关键词*.mp4/jpg）放入本地素材目录
+                </p>
+              </div>
             )}
           </div>
 
