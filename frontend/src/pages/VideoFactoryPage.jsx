@@ -1989,7 +1989,7 @@ export default function VideoFactoryPage() {
               转码完成：成功 {postResult.ok} 个{postResult.failed ? ` / 失败 ${postResult.failed} 个` : ''}
             </div>
             <div className="space-y-1.5 max-h-48 overflow-y-auto">
-              {postResult.results.map((r) =>
+              {(postResult.results || []).map((r) =>
                 r.status === 'ok' ? (
                   <div key={r.filename} className="flex items-center justify-between gap-2 text-xs">
                     <span className="text-gray-600 truncate">
