@@ -323,7 +323,8 @@ export default function PipelinePage() {
       <PageHeader
         title="口播短视频工厂"
         subtitle="一个选题 → N 条数字人口播短视频，一键批量生产、逐条可重跑、直接进发布中心"
-        icon={<Film className="w-6 h-6" />}
+        icon={Film}
+        iconColor="from-rose-500 to-orange-500"
       />
 
       {/* ── 一键生成表单 ── */}
