@@ -37,8 +37,8 @@ for _d in (ARTIFACTS_DIR, SKILLS_DIR, LOGS_DIR):
 
 # ── LLM 配置（运行时可被 load_config() 用 config 表覆盖）──────────
 AGNES_API_KEY = os.environ.get("AGNES_API_KEY", "")  # TODO: 从安全存储读取
-# 统一默认 base（消除旧代码 .cn / .com 漂移），仍可被 config 表覆盖
-AGNES_API_BASE = os.environ.get("AGNES_API_BASE", "https://apihub.agnes-ai.com/v1")
+# 中转站地址平台写死（防用户指向其他服务商绕开计费）：爱星火 aixinghuo.net（OpenAI 兼容 /v1）
+AGNES_API_BASE = os.environ.get("AGNES_API_BASE", "https://aixinghuo.net/v1")
 MODEL_NAME = os.environ.get("MODEL_NAME", "agnes-2.5-flash")
 # 图片生成模型（image_factory / meme_factory / digital_human 文生图共用，
 # 可被 config 表 image_model 覆盖；改 gpt-image 等供应商模型时同步配好 API 通道）

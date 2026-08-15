@@ -247,6 +247,21 @@ def _patch_config_relay_models() -> int:
     return 1
 
 
+def _patch_config_relay_base() -> int:
+    """common/config：中转站地址固定为爱星火 aixinghuo.net/v1（防绕开计费）。"""
+    path = os.path.join(CP_BACKEND, 'common', 'config.py')
+    if not os.path.exists(path):
+        return 0
+    src = open(path, encoding='utf-8').read()
+    if 'https://aixinghuo.net/v1' not in src:
+        old = 'os.environ.get("AGNES_API_BASE", "https://apihub.agnes-ai.com/v1")'
+        if old in src:
+            src = src.replace(old, 'os.environ.get("AGNES_API_BASE", "https://aixinghuo.net/v1")', 1)
+            open(path, 'w', encoding='utf-8').write(src)
+            return 1
+    return 0
+
+
 def _patch_auth_relay_quota() -> int:
     """common/auth：配置中转站 Key 的用户额度不限（按 token 计费）+ 资料返回 relay_configured。"""
     path = os.path.join(CP_BACKEND, 'common', 'auth.py')
@@ -395,6 +410,7 @@ def apply_all() -> int:
     total += _patch_stock_reports_order()
     total += _patch_image_factory_render()
     total += _patch_config_relay_models()
+    total += _patch_config_relay_base()
     total += _patch_auth_relay_quota()
     total += _patch_relay_save_models()
     return total
