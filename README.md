@@ -33,6 +33,14 @@ python app_creation.py        # 默认 8888，PORT 可覆盖
 npx @ryan-myp/code-platform web
 ```
 
+> ⚠️ 国内 npm 镜像（npmmirror）同步滞后，可能导致 npx 拉到旧版本（旧版有登录页/研发入口）。
+> 若看到登录页或研发管理菜单，请用官方源安装最新版：
+> ```bash
+> npx --registry=https://registry.npmjs.org @ryan-myp/code-platform web
+> ```
+> 启动时会自动检测并提示新版本；端口冲突自动改号，请以「✨ 平台已就绪」横幅中的实际前端地址为准
+> （旧实例残留时，不要打开端口冲突前那个端口，那可能是旧版本服务）。
+
 ## 升级机制（content-platform ↔ 主仓库）
 
 content-platform 是主仓库的「子集分发版」（内容创作 + 工具，不含研发/智能体/商业化 UI）。
