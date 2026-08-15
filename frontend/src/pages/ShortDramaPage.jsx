@@ -116,6 +116,7 @@ export default function ShortDramaPage() {
   const [scriptData, setScriptData] = useState(null) // v13.29 AI 剧本工作台：{title, scenes[]}
   // 红果短剧升级：小说导入 + 系列连载 + 角色圣经
   const [artStyle, setArtStyle] = useState('guoman') // 漫剧画风：guoman/hanman/3d/realistic
+  const [dynamicLevel, setDynamicLevel] = useState('auto') // 动态镜头：auto隔场/on全开/off关
   const [novelText, setNovelText] = useState('')
   const [novelBusy, setNovelBusy] = useState(false)
   const [series, setSeries] = useState([])
@@ -228,6 +229,7 @@ export default function ShortDramaPage() {
       // v13.30 AI 插画模式：每镜文生图/图生图，角色参考图锚定同人
       form.append('illust_mode', 'true')
       form.append('art_style', artStyle)
+      form.append('dynamic_level', dynamicLevel)
     } else if (mode === 'avatar') {
       form.append('avatar_mode', 'true')
       form.append('avatar_id', avatarId)
@@ -779,6 +781,32 @@ export default function ShortDramaPage() {
                       <span className="block text-[10px] font-normal text-violet-400">{desc}</span>
                     </button>
                   ))}
+                </div>
+                <div className="mt-3">
+                  <label className="block text-xs font-medium text-violet-700 mb-1.5">
+                    动态镜头（人物真动·i2v）
+                  </label>
+                  <div className="flex gap-1.5">
+                    {[
+                      ['auto', '智能', '隔场动态·速度与效果平衡'],
+                      ['on', '全开', '每场动态·效果最好但慢'],
+                      ['off', '关闭', '仅静态运镜·最快'],
+                    ].map(([id, label, desc]) => (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => setDynamicLevel(id)}
+                        className={`px-2.5 py-1.5 rounded-lg border text-xs transition-all ${
+                          dynamicLevel === id
+                            ? 'border-rose-500 bg-white text-rose-700 font-medium shadow-soft'
+                            : 'border-rose-200 bg-white/60 text-rose-500 hover:border-rose-400'
+                        }`}
+                      >
+                        {label}
+                        <span className="block text-[10px] font-normal text-rose-400">{desc}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
