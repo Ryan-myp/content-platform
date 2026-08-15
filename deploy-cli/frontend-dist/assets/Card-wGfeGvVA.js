@@ -1,0 +1,1 @@
+import{j as t}from"./markdown-nsrn-BgI.js";import"./icons-Dw_2lkQI.js";function d({children:r,className:o="",...e}){return t.jsx("div",{className:`bg-white rounded-xl border border-gray-200 p-5 ${o}`,...e,children:r})}export{d as C};

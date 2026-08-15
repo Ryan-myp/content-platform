@@ -4,7 +4,6 @@ import useRecentTools, { formatRecentTime } from '../hooks/useRecentTools'
 import {
   Bot,
   Layers,
-  FolderKanban,
   CheckCircle2,
   Clock,
   Bell,
@@ -760,11 +759,11 @@ export default function HomePage() {
       path: '/notifications',
     },
     {
-      label: '成果',
-      value: stats?.artifacts || 0,
+      label: '作品',
+      value: stats?.artifacts || stats?.works || 0,
       icon: FileText,
       color: 'from-cyan-500 to-blue-600',
-      path: '/artifacts',
+      path: '/gallery',
     },
   ]
 
@@ -1449,37 +1448,6 @@ export default function HomePage() {
         </Card>
       )}
 
-      {/* 最近项目 */}
-      {recent?.projects?.length > 0 && (
-        <Card>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <FolderKanban className="w-5 h-5 text-violet-500" />
-              <h2 className="font-semibold text-gray-900">最近项目</h2>
-            </div>
-            <Button variant="ghost" size="sm" onClick={() => navigate('/artifacts')}>
-              查看全部 <ArrowRight className="w-3.5 h-3.5 ml-1" />
-            </Button>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-            {recent.projects.map((project) => (
-              <div
-                key={project.id}
-                onClick={() => navigate(`/projects/${project.id}`)}
-                className="p-3 rounded-lg border border-gray-200 hover:border-violet-300 hover:shadow-sm cursor-pointer transition-all"
-              >
-                <div className="font-medium text-sm text-gray-900 truncate">{project.name}</div>
-                <div className="flex items-center gap-2 mt-2">
-                  <Badge color={project.status === 'active' ? 'green' : 'gray'}>
-                    {project.status}
-                  </Badge>
-                  <span className="text-xs text-gray-400">{project.updated_at?.split('T')[0]}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
 
       {/* 首页组件配置弹窗 */}
       <Modal

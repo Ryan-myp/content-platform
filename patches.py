@@ -139,6 +139,32 @@ def _patch_short_drama() -> int:
     return 1
 
 
+def _patch_stock_reports_order() -> int:
+    """stock_tools：/api/stock/reports 路由必须先于 /api/stock/{symbol} 注册，
+    否则被 {symbol} 通配遮蔽（主仓库同款 bug，同步后会复发，此处重新调整）。"""
+    path = os.path.join(CP_BACKEND, 'stock_tools.py')
+    if not os.path.exists(path):
+        return 0
+    src = open(path, encoding='utf-8').read()
+    sym = '@router.get("/api/stock/{symbol}")'
+    rep = '@router.get("/api/stock/reports")'
+    if rep not in src or sym not in src:
+        return 0
+    if src.index(rep) < src.index(sym):
+        return 0  # 顺序已正确
+    marker = '\n\n@router.get("/api/stock/reports")'
+    start = src.index(marker)
+    end_marker = '    return {"ok": True}\n\n\n'
+    end = src.index(end_marker) + len(end_marker)
+    block = src[start:end]
+    rest = src[:start] + src[end:]
+    ins = '\n\n@router.get("/api/stock/{symbol}")'
+    i = rest.index(ins)
+    rest = rest[:i] + block + rest[i:]
+    open(path, 'w', encoding='utf-8').write(rest)
+    return 1
+
+
 def apply_all() -> int:
     """应用全部定制补丁，返回补丁数。"""
     total = 0
@@ -147,6 +173,7 @@ def apply_all() -> int:
     total += _patch_digital_human()
     total += _patch_task_queue()
     total += _patch_short_drama()
+    total += _patch_stock_reports_order()
     return total
 
 

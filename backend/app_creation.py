@@ -75,6 +75,20 @@ async def lifespan(app: FastAPI):
         conn.close()
     except Exception:
         pass
+    # 审计日志表（log_audit 依赖，主仓库在 lifespan 调用 ensure_audit_table）
+    try:
+        from common.audit import ensure_audit_table
+
+        ensure_audit_table()
+    except Exception:
+        pass
+    # 小游戏表（game_factory.ensure_game_tables）
+    try:
+        from game_factory import ensure_game_tables
+
+        ensure_game_tables()
+    except Exception:
+        pass
     from task_queue import start_workers  # noqa: E402
     start_workers()
     yield
@@ -223,7 +237,12 @@ from extended_api import router as extended_api_router  # noqa: E402
 from template_store import router as template_store_router  # noqa: E402
 from templates_market import router as templates_market_router  # noqa: E402
 from apikey_api import router as apikey_api_router  # noqa: E402
+from task_queue import router as task_queue_router  # noqa: E402
+from platform_api import router as platform_api_router  # noqa: E402
+from video_templates import router as video_templates_router  # noqa: E402
+from app_extra import router as app_extra_router  # noqa: E402
 
+# 注意注册顺序：/api/tasks 冲突时 task_queue 优先（与主仓库 routers.py 一致）
 for r in [
     image_factory_router, video_factory_router, music_factory_router,
     voice_factory_router, meme_factory_router, game_factory_router,
@@ -237,6 +256,8 @@ for r in [
     favorites_api_router, search_api_router,
     realtime_router, extended_api_router, template_store_router,
     templates_market_router, apikey_api_router,
+    task_queue_router, platform_api_router, video_templates_router,
+    app_extra_router,
 ]:
     app.include_router(r)
 

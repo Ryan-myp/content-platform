@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, lazy, Suspense } from 'react'
+import React, { useState, useEffect, useLayoutEffect, useCallback, lazy, Suspense } from 'react'
 import {
   BrowserRouter as Router,
   Routes,
@@ -22,7 +22,6 @@ import { ToastProvider, useToast } from './lib/toast'
 import { useI18n, LanguageSwitcher } from './i18n/index.jsx'
 
 // 页面级懒加载：首屏仅加载当前页面，其余按需分块（首包从 ~1.8MB 降至 ~300KB）
-const ArtifactsPage = lazy(() => import('./pages/ArtifactsPage'))
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'))
 const ImageFactoryPage = lazy(() => import('./pages/ImageFactoryPage'))
@@ -155,13 +154,11 @@ export default function App() {
 
   // 本地版免登录：无 token 时静默调用 /api/auth/auto（后端自动创建本地用户并签发 token），
   // 用户首次打开即直接进入主页，无需注册/登录
-  useEffect(() => {
-    if (isAuthenticated) return
-    let cancelled = false
-    axios
+  const tryAutoLogin = useCallback(() => {
+    if (isAuthenticated) return Promise.resolve()
+    return axios
       .post('/api/auth/auto')
       .then((res) => {
-        if (cancelled) return
         const { access_token, user: u } = res.data || {}
         if (!access_token || !u) return
         localStorage.setItem('token', access_token)
@@ -169,14 +166,32 @@ export default function App() {
         axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`
         setUser(u)
         setIsAuthenticated(true)
+        // 401 恢复场景：重新登录成功后刷新一次，重新拉取页面数据
+        if (sessionStorage.getItem('auth_recovering')) {
+          sessionStorage.removeItem('auth_recovering')
+          window.location.reload()
+        }
       })
       .catch(() => {
         // 后端不支持自动登录（旧版本）：保留登录页兜底
       })
-    return () => {
-      cancelled = true
-    }
   }, [isAuthenticated])
+
+  useEffect(() => {
+    if (isAuthenticated) return
+    tryAutoLogin()
+  }, [tryAutoLogin, isAuthenticated])
+
+  // 401 会话过期：清除用户态并静默重新自动登录（本地版无登录墙）
+  useEffect(() => {
+    const handler = () => {
+      setUser(null)
+      setIsAuthenticated(false)
+      tryAutoLogin()
+    }
+    window.addEventListener('auth-session-expired', handler)
+    return () => window.removeEventListener('auth-session-expired', handler)
+  }, [tryAutoLogin])
   // 门户配置（登录后从后端加载，决定侧边栏导航结构）
   const [portal, setPortal] = useState(() => {
     try {
@@ -285,7 +300,6 @@ export default function App() {
                             <Route path="/workbench" element={<Navigate to="/tool-hub" replace />} />
                             
                             
-                            <Route path="/artifacts" element={<ArtifactsPage />} />
                             
                             
                             

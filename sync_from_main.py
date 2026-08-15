@@ -123,7 +123,7 @@ CUSTOM_FRONTEND_FILES = {
     'pages/ToolRunPage.jsx',
     'pages/DigitalHumanPage.jsx',
     'pages/NotificationsPage.jsx',
-    'pages/ArtifactsPage.jsx',
+    'pages/StockAnalysisPage.jsx',
     'components/AccessGuard.jsx',
     'components/CommandPalette.jsx',
     'components/OnboardingTour.jsx',

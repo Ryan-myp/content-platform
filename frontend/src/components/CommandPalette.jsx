@@ -4,7 +4,6 @@ import {
   Search,
   Bot,
   Layers,
-  FolderKanban,
   Image,
   Film,
   Music,
@@ -60,14 +59,6 @@ const COMMANDS = [
     description: '返回工作台首页',
     icon: Home,
     path: '/home',
-    category: '导航',
-  },
-  {
-    id: 'nav-artifacts',
-    label: '成果仓库',
-    description: '查看所有成果',
-    icon: FileText,
-    path: '/artifacts',
     category: '导航',
   },
 

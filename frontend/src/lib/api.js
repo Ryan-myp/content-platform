@@ -63,13 +63,14 @@ api.interceptors.response.use(
     const detail =
       error.response?.data?.detail || error.response?.data?.message || friendlyError(error.message)
 
-    // 401 未授权：清除凭证并跳转登录
+    // 401 未授权：清除凭证并触发免登录恢复（本地版无登录墙，自动重新登录）
     if (status === 401) {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
       delete axios.defaults.headers.common['Authorization']
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login'
+      if (!sessionStorage.getItem('auth_recovering')) {
+        sessionStorage.setItem('auth_recovering', '1')
+        window.dispatchEvent(new CustomEvent('auth-session-expired'))
       }
     }
 

@@ -10,7 +10,6 @@ import {
   Server,
   ListTodo,
   FileText,
-  FolderKanban,
   Puzzle,
   MessageSquare,
   Brain,

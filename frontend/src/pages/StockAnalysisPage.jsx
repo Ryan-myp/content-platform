@@ -25,11 +25,8 @@ import {
   Download,
   ShieldAlert,
   AlertTriangle,
-  CalendarClock,
   FileText,
   Trash2,
-  Clock,
-  Webhook,
   Loader2,
 } from 'lucide-react'
 
@@ -183,13 +180,9 @@ export default function StockAnalysisPage() {
   const [tradeAction, setTradeAction] = useState('buy')
   const [tradeQty, setTradeQty] = useState('')
   const [showTrade, setShowTrade] = useState(false)
-  // v21：定时报告 + 历史报告
+  // v21：历史报告
   const [reports, setReports] = useState(null)
   const [viewReport, setViewReport] = useState(null)
-  const [schedSymbol, setSchedSymbol] = useState('')
-  const [schedPeriod, setSchedPeriod] = useState('3mo')
-  const [schedFreq, setSchedFreq] = useState('0 9 * * *')
-  const [creatingSchedule, setCreatingSchedule] = useState(false)
   const toast = useToast()
 
   useEffect(() => {
@@ -207,30 +200,6 @@ export default function StockAnalysisPage() {
     }
   }
 
-  // v21：创建定时股票分析任务
-  const handleCreateSchedule = async () => {
-    const sym = (schedSymbol || stockData?.symbol || '').trim().toUpperCase()
-    if (!sym) {
-      toast.warning('请输入股票代码')
-      return
-    }
-    setCreatingSchedule(true)
-    try {
-      await api.post('/api/scheduler', {
-        name: `每日股票分析：${sym}`,
-        description: '定时抓取行情并生成专业分析报告，通过 Webhook 推送',
-        job_type: 'stock_report',
-        cron_expression: schedFreq,
-        config: { symbol: sym, period: schedPeriod, analysis_type: 'comprehensive' },
-      })
-      toast.success(`已创建定时任务：${sym}（${FREQ_OPTIONS.find((f) => f.cron === schedFreq)?.label}）`)
-    } catch (err) {
-      toast.error(err.response?.data?.detail || '创建定时任务失败')
-    } finally {
-      setCreatingSchedule(false)
-    }
-  }
-
   // v21：删除历史报告
   const handleDeleteReport = async (r) => {
     if (!confirm(`确定删除 ${r.symbol} 的报告吗？`)) return
@@ -243,12 +212,6 @@ export default function StockAnalysisPage() {
     }
   }
 
-  // v21：定时任务频率预设
-  const FREQ_OPTIONS = [
-    { label: '每天 9:00 盘前', cron: '0 9 * * *' },
-    { label: '每天 17:00 盘后', cron: '0 17 * * *' },
-    { label: '每周一 9:00', cron: '0 9 * * 1' },
-  ]
   const PERIOD_OPTIONS = [
     { value: '1mo', label: '1个月' },
     { value: '3mo', label: '3个月' },
@@ -878,72 +841,7 @@ export default function StockAnalysisPage() {
           </Card>
         </div>
 
-       {/* v21：定时分析报告 + 历史报告 */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-          {/* 定时分析报告 */}
-          <Card>
-            <h3 className="font-medium text-gray-900 mb-1 flex items-center gap-2">
-              <CalendarClock className="w-4 h-4 text-brand-500" />
-              定时分析报告
-            </h3>
-            <p className="text-xs text-gray-500 mb-4">
-              每天定时抓取行情并生成专业分析报告，配置 Webhook 后自动推送（飞书 / 企业微信 / 自建服务）
-            </p>
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs text-gray-500 mb-1 block">股票代码</label>
-                <SymbolAutocomplete
-                  value={schedSymbol}
-                  onChange={setSchedSymbol}
-                  compact
-                  placeholder={stockData?.symbol || '搜索或输入代码，如 AAPL、0700.HK'}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-gray-500 mb-1 block">分析周期</label>
-                  <select
-                    value={schedPeriod}
-                    onChange={(e) => setSchedPeriod(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg"
-                  >
-                    {PERIOD_OPTIONS.map((p) => (
-                      <option key={p.value} value={p.value}>
-                        {p.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 mb-1 block">推送频率</label>
-                  <select
-                    value={schedFreq}
-                    onChange={(e) => setSchedFreq(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg"
-                  >
-                    {FREQ_OPTIONS.map((f) => (
-                      <option key={f.cron} value={f.cron}>
-                        {f.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <Button onClick={handleCreateSchedule} loading={creatingSchedule} className="w-full">
-                <Clock className="w-4 h-4 mr-1" />
-                创建定时任务
-              </Button>
-              <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg text-xs text-blue-800">
-                <Webhook className="w-4 h-4 mt-0.5 shrink-0" />
-                <span>
-                  报告生成后将通过 Webhook 自动推送。前往
-                  <a href="/#/settings" className="underline font-medium">设置 - 通知</a>
-                  配置飞书 / 企业微信机器人即可在手机上接收每日报告。
-                </span>
-              </div>
-            </div>
-          </Card>
-
+        {/* v21：历史报告 */}
           {/* 历史报告 */}
           <Card>
             <h3 className="font-medium text-gray-900 mb-4 flex items-center gap-2">
@@ -983,7 +881,6 @@ export default function StockAnalysisPage() {
               </div>
             )}
           </Card>
-        </div>
 
         {/* 免责声明 */}
         <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">

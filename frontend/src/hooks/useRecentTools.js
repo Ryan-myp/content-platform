@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from 'react'
 // 记录 {path, label, icon, ts}，同页面去重置顶，上限 10 条，仅收录映射表内页面
 // v17-F：TOOL_META 同时供 App.jsx 路由级页面标题使用（单份数据源，两处消费）
 export const TOOL_META = {
-  '/artifacts': { label: '成果仓库', icon: '🗂️' },
   '/tasks': { label: '任务中心', icon: '✅' },
   '/digital-human': { label: 'AI 数字人', icon: '🎭' },
   '/meme': { label: '表情包工坊', icon: '😀' },

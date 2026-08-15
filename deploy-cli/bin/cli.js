@@ -30,12 +30,42 @@ import { startBackend, waitForBackend } from '../lib/backend.js'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const PKG_ROOT = join(__dirname, '..')
 const DIST_PATH = join(PKG_ROOT, 'frontend-dist')
+const PKG_VERSION = (() => {
+  try {
+    return JSON.parse(readFileSync(join(PKG_ROOT, 'package.json'), 'utf-8')).version
+  } catch {
+    return '0.0.0'
+  }
+})()
+
+// 启动时异步检查 npm 最新版本（镜像滞后/旧缓存时提示升级命令）
+async function checkLatestVersion() {
+  try {
+    const res = await fetch('https://registry.npmjs.org/@ryan-myp%2Fcode-platform/latest', {
+      headers: { 'User-Agent': 'code-platform-cli' },
+      signal: AbortSignal.timeout(5000),
+    })
+    if (!res.ok) return
+    const data = await res.json()
+    const latest = data.version
+    if (latest && latest !== PKG_VERSION) {
+      console.log('')
+      console.log(`  ⚠️  检测到新版本 ${latest}（当前 ${PKG_VERSION}）`)
+      console.log('     若镜像同步滞后导致 npx 拉到旧版，请用官方源安装：')
+      console.log('     npx --registry=https://registry.npmjs.org @ryan-myp/code-platform web')
+      console.log('     或清缓存重装：rm -rf ~/.npm/_npx ~/.cache/code-platform')
+      console.log('')
+    }
+  } catch {
+    // 网络不可用/超时：静默跳过
+  }
+}
 
 const program = new Command()
 program
   .name('code-platform')
-  .description('小团智能平台 — AI 驱动的智能研发与创作平台（一键部署）')
-  .version('1.0.0')
+  .description('小团智能平台 — 内容创作一键部署（本地免费、免登录）')
+  .version(PKG_VERSION)
 
 program
   .command('web')
@@ -111,13 +141,15 @@ program
     console.log('')
     console.log('  ═══════════════════════════════════')
     console.log('  ✨ 平台已就绪！')
-    if (wantFrontend) console.log(`     🌐 前端:  http://localhost:${port}`)
+    // 打印「实际」端口（端口冲突自动切换后，这里必须是 frontendPort 而非请求端口）
+    if (wantFrontend) console.log(`     🌐 前端:  http://localhost:${frontendPort}`)
     if (wantBackend) console.log(`     ⚙️ 后端:  ${backendUrl}`)
     console.log('')
-    console.log('  按 Ctrl+C 停止服务')
-    console.log('')
+    console.log('  ⚠️  请以浏览器打开上方「前端」地址；若端口冲突自动改号，以实际端口为准')
     console.log('  💡 自定义端口：npx @ryan-myp/code-platform web --port 8080 --backend-port 9000')
     console.log('')
+    // 后台检查最新版本（不阻塞启动）
+    checkLatestVersion()
   })
 
 program

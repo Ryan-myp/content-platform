@@ -1073,6 +1073,56 @@ async def search_stock(q: str = "", limit: int = 8, current_user: dict = require
     return {"ok": True, "query": q, "items": items}
 
 
+@router.get("/api/stock/reports")
+async def list_stock_reports(limit: int = 20, current_user: dict = require_auth()):
+    """v21：当前用户定时股票分析报告列表（按时间倒序）。"""
+    uid = str(current_user.get("user_id", ""))
+    conn = get_db()
+    try:
+        rows = conn.execute(
+            "SELECT id, symbol, period, report, created_at FROM stock_reports "
+            "WHERE user_id=? ORDER BY id DESC LIMIT ?",
+            (uid, min(max(limit, 1), 100)),
+        ).fetchall()
+        return {"items": [dict(r) for r in rows]}
+    finally:
+        conn.close()
+
+
+@router.get("/api/stock/reports/{report_id}")
+async def get_stock_report(report_id: int, current_user: dict = require_auth()):
+    """v21：单条定时股票报告详情（校验归属）。"""
+    uid = str(current_user.get("user_id", ""))
+    conn = get_db()
+    try:
+        row = conn.execute(
+            "SELECT id, symbol, period, report, created_at FROM stock_reports WHERE id=? AND user_id=?",
+            (report_id, uid),
+        ).fetchone()
+    finally:
+        conn.close()
+    if not row:
+        raise HTTPException(404, "报告不存在")
+    return dict(row)
+
+
+@router.delete("/api/stock/reports/{report_id}")
+async def delete_stock_report(report_id: int, current_user: dict = require_auth()):
+    """v21：删除单条定时股票报告（校验归属）。"""
+    uid = str(current_user.get("user_id", ""))
+    conn = get_db()
+    try:
+        cur = conn.execute("DELETE FROM stock_reports WHERE id=? AND user_id=?", (report_id, uid))
+        conn.commit()
+    finally:
+        conn.close()
+    if cur.rowcount == 0:
+        raise HTTPException(404, "报告不存在")
+    return {"ok": True}
+
+
+
+
 @router.get("/api/stock/{symbol}")
 async def get_stock(symbol: str, period: str = "3mo", current_user: dict = require_auth()):
     """获取股票详细数据"""
@@ -1357,56 +1407,6 @@ async def run_stock_analysis(symbol: str, period: str = "3mo", analysis_type: st
             "support_resistance": levels,
         },
     }
-
-
-@router.get("/api/stock/reports")
-async def list_stock_reports(limit: int = 20, current_user: dict = require_auth()):
-    """v21：当前用户定时股票分析报告列表（按时间倒序）。"""
-    uid = str(current_user.get("user_id", ""))
-    conn = get_db()
-    try:
-        rows = conn.execute(
-            "SELECT id, symbol, period, report, created_at FROM stock_reports "
-            "WHERE user_id=? ORDER BY id DESC LIMIT ?",
-            (uid, min(max(limit, 1), 100)),
-        ).fetchall()
-        return {"items": [dict(r) for r in rows]}
-    finally:
-        conn.close()
-
-
-@router.get("/api/stock/reports/{report_id}")
-async def get_stock_report(report_id: int, current_user: dict = require_auth()):
-    """v21：单条定时股票报告详情（校验归属）。"""
-    uid = str(current_user.get("user_id", ""))
-    conn = get_db()
-    try:
-        row = conn.execute(
-            "SELECT id, symbol, period, report, created_at FROM stock_reports WHERE id=? AND user_id=?",
-            (report_id, uid),
-        ).fetchone()
-    finally:
-        conn.close()
-    if not row:
-        raise HTTPException(404, "报告不存在")
-    return dict(row)
-
-
-@router.delete("/api/stock/reports/{report_id}")
-async def delete_stock_report(report_id: int, current_user: dict = require_auth()):
-    """v21：删除单条定时股票报告（校验归属）。"""
-    uid = str(current_user.get("user_id", ""))
-    conn = get_db()
-    try:
-        cur = conn.execute("DELETE FROM stock_reports WHERE id=? AND user_id=?", (report_id, uid))
-        conn.commit()
-    finally:
-        conn.close()
-    if cur.rowcount == 0:
-        raise HTTPException(404, "报告不存在")
-    return {"ok": True}
-
-
 # ══════════════════════════════════════════════════════════════
 # 模拟交易
 # ══════════════════════════════════════════════════════════════
