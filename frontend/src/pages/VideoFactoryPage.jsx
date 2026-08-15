@@ -194,6 +194,8 @@ export default function VideoFactoryPage() {
   const toast = useToast()
   const [stats, setStats] = useState({ total_videos: 0, api_configured: false })
   const [videos, setVideos] = useState([])
+  const [videoModels, setVideoModels] = useState([])
+  const [selectedVideoModel, setSelectedVideoModel] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -319,6 +321,7 @@ export default function VideoFactoryPage() {
 
   useEffect(() => {
     fetchStats()
+loadVideoModels()
     fetchVideos()
     fetchCloudPrompts()
     fetchScriptTemplates()
@@ -512,6 +515,7 @@ export default function VideoFactoryPage() {
       }
     }
     form.append('frame_rate', frameRate)
+    if (selectedVideoModel) form.append('model', selectedVideoModel)
     const r = await submitTask('/api/video-factory/generate', form, {
       onUpdate: handleTaskUpdate,
       onSuccess: handleTaskSuccess,
@@ -609,6 +613,17 @@ export default function VideoFactoryPage() {
       setPostVideo('')
     }
   }
+
+  const loadVideoModels = useCallback(async () => {
+    try {
+      const res = await api.get('/api/config')
+      const models = (Array.isArray(res.data.models) ? res.data.models : [])
+        .filter((m) => !/image|tts|whisper|audio|embedding|vision/i.test(m.name || ''))
+      setVideoModels(models)
+      const pref = res.data.video_model || (models.length ? models[0].name : '')
+      setSelectedVideoModel(pref)
+    } catch { /* 静默 */ }
+  }, [])
 
   // 拼接：多个视频按顺序合成一个（统一分辨率 + 自动补静音）
   const handlePostConcat = async () => {
@@ -1263,6 +1278,26 @@ export default function VideoFactoryPage() {
                 </option>
               ))}
             </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">生成模型</label>
+            <select
+              value={selectedVideoModel}
+              onChange={(e) => {
+                const v = e.target.value
+                setSelectedVideoModel(v)
+                api.put('/api/model-prefs', { video: v }).catch(() => {})
+              }}
+              className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+            >
+              {videoModels.length === 0 && <option value="">默认（请先配置中转站 Key）</option>}
+              {videoModels.map((m) => (
+                <option key={m.name} value={m.name}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-[11px] text-gray-400">选择你中转站提供的视频模型，可自由切换</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">帧率</label>

@@ -8,7 +8,6 @@ const NAV_ITEMS = [
   { path: '/publish', label: '发布', icon: Send },
   { path: '/growth', label: '增长', icon: TrendingUp },
   { path: '/image-factory', label: '生图', icon: ImageIcon },
-  { path: '/templates', label: '模板', icon: Layers },
 ]
 
 export default function MobileBottomNav() {

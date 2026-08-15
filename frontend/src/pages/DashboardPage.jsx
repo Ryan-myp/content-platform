@@ -463,7 +463,7 @@ export default function DashboardPage() {
         {[
           { name: '作品广场', path: '/gallery', icon: '🎨', color: 'from-pink-500 to-rose-500', desc: '浏览全平台 AI 作品' },
           { name: '发布中心', path: '/publish', icon: '🚀', color: 'from-blue-500 to-cyan-500', desc: '一键发布到各平台' },
-          { name: '模板市场', path: '/templates', icon: '📋', color: 'from-purple-500 to-violet-500', desc: '精选创作模板' },
+          { name: '小游戏', path: '/games', icon: '🕹️', color: 'from-purple-500 to-violet-500', desc: 'AI 生成双版本小游戏' },
           { name: '快捷键', path: '/shortcuts', icon: '⌨️', color: 'from-emerald-500 to-teal-500', desc: '掌握高效操作' },
         ].map(item => (
           <a key={item.name} href={item.path} className={`bg-gradient-to-br ${item.color} rounded-2xl p-4 text-white hover:shadow-lg transition-all hover:-translate-y-0.5`}>

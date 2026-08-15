@@ -986,8 +986,9 @@ export default function ImageFactoryPage() {
       const res = await api.get('/api/config')
       const models = Array.isArray(res.data.models) ? res.data.models : []
       setModelOptions(models)
-      setSelectedModel(res.data.image_model || '')
-      setImageModelName(res.data.image_model || '系统配置')
+      const pref = res.data.image_model || (models.length ? models[0].name : '')
+      setSelectedModel(pref)
+      setImageModelName(pref || '系统配置')
     } catch { /* 静默 */ }
   }, [])
 
@@ -2024,7 +2025,11 @@ export default function ImageFactoryPage() {
                   <label className="text-sm font-medium text-gray-700 mb-2 block">生成模型</label>
                   <select
                     value={selectedModel}
-                    onChange={(e) => setSelectedModel(e.target.value)}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      setSelectedModel(v)
+                      api.put('/api/model-prefs', { image: v }).catch(() => {})
+                    }}
                     className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 outline-none text-sm"
                   >
                     <option value="">默认（{imageModelName || '系统配置'}）</option>

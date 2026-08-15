@@ -123,14 +123,79 @@ class ConfigSaveRequest(BaseModel):
 
 @router.get("/api/config")
 async def get_config(current_user: dict = require_auth()):
-    """当前模型配置（本地版：模型来自中转站，仅返回列表与当前选中）。"""
+    """当前模型配置（本地版：模型全部来自用户中转站，未配置 Key 时列表为空）。"""
+    from common.auth import get_user_profile
     from common.config import get_model_list, get_model_config
 
-    cfg = get_model_config()
+    uid = current_user.get("user_id", "")
+    profile = get_user_profile(uid)
+    relay_configured = bool(profile.get("relay_configured"))
+    models = get_model_list()  # [{name, note, base_url}] 来自用户中转站
+    # 按功能模型偏好（用户自由切换，不写死）
+    prefs = _load_model_prefs(uid)
+    cfg = get_model_config(prefs.get("default") or None)
     return {
-        "model_name": cfg.get("model") or "",
-        "models": [m.get("id") or m.get("name") or "" for m in get_model_list()],
+        "model_name": prefs.get("default") or (models[0]["name"] if models else ""),
+        "models": models,
+        "relay_configured": relay_configured,
+        "image_model": prefs.get("image") or "",
+        "video_model": prefs.get("video") or "",
+        "audio_model": prefs.get("audio") or "",
+        "default_model": prefs.get("default") or "",
     }
+
+
+def _load_model_prefs(uid: str) -> dict:
+    """读取用户按功能选择的模型偏好（config 表 model_prefs:{uid}）。"""
+    try:
+        from common.db import get_db_context
+
+        with get_db_context() as conn:
+            row = conn.execute(
+                "SELECT value FROM config WHERE key=?", (f"model_prefs:{uid}",)
+            ).fetchone()
+        if row and row["value"]:
+            data = json.loads(row["value"])
+            if isinstance(data, dict):
+                return data
+    except Exception:
+        pass
+    return {}
+
+
+class ModelPrefsRequest(BaseModel):
+    default: str = ""
+    image: str = ""
+    video: str = ""
+    audio: str = ""
+
+
+@router.get("/api/model-prefs")
+async def get_model_prefs(current_user: dict = require_auth()):
+    """读取用户按功能选择的模型偏好。"""
+    return _load_model_prefs(current_user.get("user_id", ""))
+
+
+@router.put("/api/model-prefs")
+async def save_model_prefs(req: ModelPrefsRequest, current_user: dict = require_auth()):
+    """保存用户按功能选择的模型偏好（图片/视频/音频/默认，自由切换）。"""
+    uid = current_user.get("user_id", "")
+    prefs = _load_model_prefs(uid)
+    for k in ("default", "image", "video", "audio"):
+        v = getattr(req, k, "")
+        if v:
+            prefs[k] = v
+    conn = get_db()
+    try:
+        conn.execute(
+            "INSERT INTO config (key, value) VALUES (?,?) "
+            "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+            (f"model_prefs:{uid}", json.dumps(prefs, ensure_ascii=False)),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+    return {"ok": True, "prefs": prefs}
 
 
 @router.post("/api/config/save")

@@ -18,7 +18,7 @@ const TYPE_PATHS = {
       'image-factory': '/image-factory',
       'video-factory': '/video-factory',
       'music-factory': '/music-factory',
-      'template-market': '/templates',
+      'template-market': '/tool-hub',
       'seo-analyzer': '/seo-analyzer',
       'competitor-monitor': '/competitor-monitor',
       'meme-factory': '/meme-factory',
@@ -218,7 +218,7 @@ export default function SearchPage() {
           {[
             { name: '图片工厂', path: '/image-factory', icon: '🎨', color: 'from-pink-500 to-rose-500' },
             { name: '视频工厂', path: '/video-factory', icon: '🎬', color: 'from-blue-500 to-cyan-500' },
-            { name: '模板市场', path: '/templates', icon: '📋', color: 'from-purple-500 to-violet-500' },
+            { name: '小游戏', path: '/games', icon: '🕹️', color: 'from-purple-500 to-violet-500' },
             { name: '工具中心', path: '/tool-hub', icon: '🧰', color: 'from-emerald-500 to-teal-500' },
           ].map(item => (
             <a

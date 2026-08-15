@@ -39,7 +39,6 @@ export const TOOL_META = {
   '/profile': { label: '个人中心', icon: '👤' },
   '/dashboard': { label: '数据看板', icon: '📊' },
   '/publish': { label: '发布中心', icon: '🚀' },
-  '/templates': { label: '模板市场', icon: '🗃️' },
   '/help': { label: '帮助中心', icon: '❓' },
 }
 

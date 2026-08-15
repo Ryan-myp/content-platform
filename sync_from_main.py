@@ -124,6 +124,10 @@ CUSTOM_FRONTEND_FILES = {
     'pages/DigitalHumanPage.jsx',
     'pages/NotificationsPage.jsx',
     'pages/StockAnalysisPage.jsx',
+    # 模型相关定制：模型来自中转站、按功能切换（主仓库更新不覆盖）
+    'components/ModelSwitcher.jsx',
+    'pages/ImageFactoryPage.jsx',
+    'pages/VideoFactoryPage.jsx',
     'components/AccessGuard.jsx',
     'components/ErrorBoundary.jsx',
     'components/CommandPalette.jsx',

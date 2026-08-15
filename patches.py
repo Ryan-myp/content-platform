@@ -228,6 +228,162 @@ def _patch_image_factory_render() -> int:
     return n
 
 
+def _patch_config_relay_models() -> int:
+    """common/config：本地版模型不写死（DEFAULT_MODELS 置空），全部来自用户中转站。"""
+    path = os.path.join(CP_BACKEND, 'common', 'config.py')
+    if not os.path.exists(path):
+        return 0
+    src = open(path, encoding='utf-8').read()
+    marker = 'DEFAULT_MODELS = []'
+    if marker in src:
+        return 0
+    # 找到 DEFAULT_MODELS = [ ... ] 整块并清空
+    import re
+    m = re.search(r'DEFAULT_MODELS\s*=\s*\[[^\]]*\]', src, re.S)
+    if not m:
+        return 0
+    src = src[:m.start()] + 'DEFAULT_MODELS = []  # 本地版：模型不写死，来自用户中转站' + src[m.end():]
+    open(path, 'w', encoding='utf-8').write(src)
+    return 1
+
+
+def _patch_auth_relay_quota() -> int:
+    """common/auth：配置中转站 Key 的用户额度不限（按 token 计费）+ 资料返回 relay_configured。"""
+    path = os.path.join(CP_BACKEND, 'common', 'auth.py')
+    if not os.path.exists(path):
+        return 0
+    src = open(path, encoding='utf-8').read()
+    n = 0
+    # 1. consume_quota 放行
+    if 'row.get("relay_api_key")' not in src:
+        old = '    if row.get("role") == "admin":\n        return {"allowed": True, "remaining": 9999, "charged": False}\n    today = _today()'
+        new = ('    if row.get("role") == "admin":\n        return {"allowed": True, "remaining": 9999, "charged": False}\n'
+               '    # 模式 B：配置了中转站 Key 的用户按 token 计费，平台不限次数\n'
+               '    if row.get("relay_api_key"):\n'
+               '        return {"allowed": True, "remaining": 9999, "charged": False}\n'
+               '    today = _today()')
+        if old in src:
+            src = src.replace(old, new, 1)
+            n += 1
+    # 2. get_quota_info 放行
+    if '"relay_billed": True' not in src:
+        old = '    _maybe_send_expiry_notice(user_id)  # 惰性发送到期提醒（≤3 天，去重）\n    # 会员剩余天数（含到期日当天，用于前端到期提醒）'
+        new = ('    _maybe_send_expiry_notice(user_id)  # 惰性发送到期提醒（≤3 天，去重）\n'
+               '    # 模式 B：配置了中转站 Key 的用户按 token 计费，平台不限次数\n'
+               '    if profile.get("relay_configured"):\n'
+               '        return {\n'
+               '            "membership": "free", "membership_expires": None, "membership_days_left": None,\n'
+               '            "username": profile.get("username", ""), "role": profile.get("role", ""),\n'
+               '            "daily_quota": None, "bonus_quota": 0, "used_today": 0,\n'
+               '            "remaining_today": 9999, "total_usage": profile.get("total_usage", 0),\n'
+               '            "relay_billed": True,\n'
+               '        }\n'
+               '    # 会员剩余天数（含到期日当天，用于前端到期提醒）')
+        if old in src:
+            src = src.replace(old, new, 1)
+            n += 1
+    # 3. get_user_profile 返回 relay_configured
+    if '"relay_configured": bool(row.get("relay_api_key"))' not in src:
+        old = '        "created_at": row.get("created_at"),\n    }'
+        new = '        "created_at": row.get("created_at"),\n        "relay_configured": bool(row.get("relay_api_key")),\n    }'
+        if old in src:
+            src = src.replace(old, new, 1)
+            n += 1
+    if n:
+        open(path, 'w', encoding='utf-8').write(src)
+    return n
+
+
+def _patch_relay_save_models() -> int:
+    """relay_api：保存用户 Key 时拉取中转站模型列表并保存；清除时清空模型。"""
+    path = os.path.join(CP_BACKEND, 'relay_api.py')
+    if not os.path.exists(path):
+        return 0
+    src = open(path, encoding='utf-8').read()
+    n = 0
+    # 1. PUT /me 拉取模型（以返回字段为幂等标记）
+    if '"model_hint": "模型列表已从中转站同步"' not in src:
+        old = '''    with get_db_context() as conn:
+        conn.execute(
+            "UPDATE users SET relay_api_key=?, relay_api_base='' WHERE id=?",
+            (api_key, uid),
+        )
+    return {
+        "success": True,
+        "message": "中转站 Key 已保存，AI 功能将使用你的 Key 计费（仅支持本站签发的 Key）",
+        "api_key_masked": _mask_key(api_key),
+        "api_base": _DEFAULT_BASE,
+    }'''
+        new = '''    # 拉取该中转站的模型列表并保存（本地版模型不写死，全部来自用户中转站）
+    models_saved = 0
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            resp = await client.get(
+                f"{_DEFAULT_BASE}/models",
+                headers={"Authorization": f"Bearer {api_key}"},
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                raw = data.get("data") if isinstance(data, dict) else data
+                if isinstance(raw, list):
+                    model_list = [
+                        {"name": m.get("id")} for m in raw if isinstance(m, dict) and m.get("id")
+                    ]
+                    if model_list:
+                        from common.db import get_db_context
+
+                        with get_db_context() as conn:
+                            conn.execute(
+                                "INSERT INTO config (key, value) VALUES ('model_list',?) "
+                                "ON CONFLICT(key) DO UPDATE SET value=?",
+                                (
+                                    json.dumps(model_list, ensure_ascii=False),
+                                    json.dumps(model_list, ensure_ascii=False),
+                                ),
+                            )
+                        models_saved = len(model_list)
+    except Exception:
+        pass
+
+    with get_db_context() as conn:
+        conn.execute(
+            "UPDATE users SET relay_api_key=?, relay_api_base='' WHERE id=?",
+            (api_key, uid),
+        )
+    return {
+        "success": True,
+        "message": "中转站 Key 已保存，AI 功能将使用你的 Key 计费",
+        "api_key_masked": _mask_key(api_key),
+        "api_base": _DEFAULT_BASE,
+        "models": models_saved,
+        "model_hint": "模型列表已从中转站同步" if models_saved else "已保存 Key（模型列表同步失败，请重试或检查中转站）",
+    }'''
+        if old in src:
+            src = src.replace(old, new, 1)
+            n += 1
+    # 2. DELETE /me 清空模型列表
+    if "DELETE FROM config WHERE key='model_list'" not in src:
+        old = '''    with get_db_context() as conn:
+        conn.execute(
+            "UPDATE users SET relay_api_key='', relay_api_base='' WHERE id=?",
+            (uid,),
+        )
+    return {"success": True, "message": "已清除中转站配置，回退平台默认计费"}'''
+        new = '''    with get_db_context() as conn:
+        conn.execute(
+            "UPDATE users SET relay_api_key='', relay_api_base='' WHERE id=?",
+            (uid,),
+        )
+        conn.execute("DELETE FROM config WHERE key='model_list'")
+    return {"success": True, "message": "已清除中转站配置与模型列表，请重新配置 Key 后使用 AI 功能"}'''
+        if old in src:
+            src = src.replace(old, new, 1)
+            n += 1
+    if n:
+        open(path, 'w', encoding='utf-8').write(src)
+    return n
+
+
 def apply_all() -> int:
     """应用全部定制补丁，返回补丁数。"""
     total = 0
@@ -238,6 +394,9 @@ def apply_all() -> int:
     total += _patch_short_drama()
     total += _patch_stock_reports_order()
     total += _patch_image_factory_render()
+    total += _patch_config_relay_models()
+    total += _patch_auth_relay_quota()
+    total += _patch_relay_save_models()
     return total
 
 

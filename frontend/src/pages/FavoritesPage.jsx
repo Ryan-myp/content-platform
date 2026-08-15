@@ -32,7 +32,7 @@ const TYPE_META = {
     color: 'bg-emerald-50 text-emerald-600',
     path: '/records',
   },
-  template: { label: '模板', icon: Store, color: 'bg-amber-50 text-amber-600', path: '/templates' },
+  template: { label: '模板', icon: Store, color: 'bg-amber-50 text-amber-600', path: '/tool-hub' },
   gallery: {
     label: '作品',
     icon: GalleryVerticalEnd,

@@ -52,29 +52,10 @@ DASHSCOPE_API_KEY = os.environ.get("DASHSCOPE_API_KEY", "")
 # 通道顺序（逗号分隔，可被 .env / config 表覆盖）；未配置 key 的通道自动跳过
 AI_VIDEO_CHANNELS = os.environ.get("AI_VIDEO_CHANNELS", "agnes,dashscope")
 
-# 内置默认模型列表（config 表未配置 model_list 时使用，供全局模型切换 / Agent 创建下拉）
-# base_url 留空 = 继承全局 AGNES_API_BASE；api_key 留空 = 继承全局 AGNES_API_KEY（.env / config 表）
-# 多供应商模型需各自配置 base_url + api_key（均为 OpenAI 兼容 /chat/completions）
-DEFAULT_MODELS = [
-    {"name": "agnes-2.5-flash", "note": "推荐", "base_url": "", "api_key": ""},
-    {"name": "agnes-2.5-pro", "note": "", "base_url": "", "api_key": ""},
-    {"name": "agnes-2.5-mini", "note": "轻量快速", "base_url": "", "api_key": ""},
-    {"name": "agnes-vision", "note": "视觉理解", "base_url": "", "api_key": ""},
-    {"name": "deepseek-v3", "note": "DeepSeek", "base_url": "https://api.deepseek.com/v1", "api_key": ""},
-    {"name": "glm-4-plus", "note": "智谱 GLM", "base_url": "https://open.bigmodel.cn/api/paas/v4", "api_key": ""},
-    {
-        "name": "doubao-seed-1.6",
-        "note": "豆包·火山方舟",
-        "base_url": "https://ark.cn-beijing.volces.com/api/v3",
-        "api_key": "",
-    },
-    {
-        "name": "qwen-max",
-        "note": "通义千问",
-        "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-        "api_key": "",
-    },
-]
+# 内置默认模型列表（content-platform 本地版不使用：模型必须从中转站拉取，不写死）
+# 用户在个人中心配置中转站 Key 后，后端自动拉取该中转站的模型列表并保存到 config 表。
+# 保留常量仅为向后兼容（env 显式配置 AGNES 系模型时仍生效）。
+DEFAULT_MODELS = []
 
 # ── 安全配置 ──────────────────────────────────────────────
 _DEFAULT_SECRET_KEY = os.environ.get("SECRET_KEY", "")  # 必须从环境变量设置

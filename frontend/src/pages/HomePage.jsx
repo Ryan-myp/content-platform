@@ -260,13 +260,6 @@ const SCENE_GROUPS = [
         hot: true,
         keywords: '作品,点赞,评论,社区,广场',
       },
-      {
-        label: '模板市场',
-        desc: '四大工坊模板聚合',
-        path: '/templates',
-        icon: Store,
-        keywords: '模板,工坊,游戏,小程序',
-      },
     ],
   },
   {

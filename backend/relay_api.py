@@ -228,7 +228,7 @@ async def get_my_relay(current_user: dict = require_auth()):
 
 @router.put("/me")
 async def update_my_relay(req: UserRelayRequest, current_user: dict = require_auth()):
-    """保存用户中转站 key/base_url（先校验 key 有效再落库）。"""
+    """保存用户中转站 key（先校验 key 有效，再拉取中转站模型列表并生效）。"""
     uid = current_user.get("user_id", "")
     if not uid:
         raise HTTPException(401, "请先登录")
@@ -241,6 +241,37 @@ async def update_my_relay(req: UserRelayRequest, current_user: dict = require_au
     if not ok:
         raise HTTPException(400, f"中转站 Key 校验失败：{err}（请确认是本站签发的 Key）")
 
+    # 拉取该中转站的模型列表并保存（本地版模型不写死，全部来自用户中转站）
+    models_saved = 0
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            resp = await client.get(
+                f"{_DEFAULT_BASE}/models",
+                headers={"Authorization": f"Bearer {api_key}"},
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                raw = data.get("data") if isinstance(data, dict) else data
+                if isinstance(raw, list):
+                    model_list = [
+                        {"name": m.get("id")} for m in raw if isinstance(m, dict) and m.get("id")
+                    ]
+                    if model_list:
+                        from common.db import get_db_context
+
+                        with get_db_context() as conn:
+                            conn.execute(
+                                "INSERT INTO config (key, value) VALUES ('model_list',?) "
+                                "ON CONFLICT(key) DO UPDATE SET value=?",
+                                (
+                                    json.dumps(model_list, ensure_ascii=False),
+                                    json.dumps(model_list, ensure_ascii=False),
+                                ),
+                            )
+                        models_saved = len(model_list)
+    except Exception:
+        pass
+
     with get_db_context() as conn:
         conn.execute(
             "UPDATE users SET relay_api_key=?, relay_api_base='' WHERE id=?",
@@ -248,9 +279,11 @@ async def update_my_relay(req: UserRelayRequest, current_user: dict = require_au
         )
     return {
         "success": True,
-        "message": "中转站 Key 已保存，AI 功能将使用你的 Key 计费（仅支持本站签发的 Key）",
+        "message": "中转站 Key 已保存，AI 功能将使用你的 Key 计费",
         "api_key_masked": _mask_key(api_key),
         "api_base": _DEFAULT_BASE,
+        "models": models_saved,
+        "model_hint": "模型列表已从中转站同步" if models_saved else "已保存 Key（模型列表同步失败，请重试或检查中转站）",
     }
 
 
@@ -268,14 +301,15 @@ async def verify_user_relay_key(req: UserRelayRequest, current_user: dict = requ
 
 @router.delete("/me")
 async def clear_my_relay(current_user: dict = require_auth()):
-    """清除用户中转站配置（回退平台默认计费）。"""
+    """清除用户中转站配置（同时清空拉取到的模型列表，回到未配置状态）。"""
     uid = current_user.get("user_id", "")
     with get_db_context() as conn:
         conn.execute(
             "UPDATE users SET relay_api_key='', relay_api_base='' WHERE id=?",
             (uid,),
         )
-    return {"success": True, "message": "已清除中转站配置，回退平台默认计费"}
+        conn.execute("DELETE FROM config WHERE key='model_list'")
+    return {"success": True, "message": "已清除中转站配置与模型列表，请重新配置 Key 后使用 AI 功能"}
 
 
 async def _verify_user_key(api_key: str, api_base: str) -> tuple:

@@ -63,11 +63,9 @@ const DocQAPage = lazy(() => import('./pages/DocQAPage'))
 const PDFToolPage = lazy(() => import('./pages/PDFToolPage'))
 // v10.0 社区与变现
 const GalleryPage = lazy(() => import('./pages/GalleryPage'))
-const TemplateMarketPage = lazy(() => import('./pages/TemplateMarketPage'))
 // v10.1 新功能页面
 const WebSearchPage = lazy(() => import('./pages/WebSearchPage'))
 const DataAnalyzerPage = lazy(() => import('./pages/DataAnalyzerPage'))
-const CreatorCenterPage = lazy(() => import('./pages/CreatorCenterPage'))
 const SearchPage = lazy(() => import('./pages/SearchPage'))
 const ShortcutsPage = lazy(() => import('./pages/ShortcutsPage'))
 // 全量修复 v1：内容策略 / 竞品监控 / 收藏中心
@@ -541,14 +539,6 @@ export default function App() {
                             />
                             
                             
-                            <Route
-                              path="/creator-center"
-                              element={
-                                <AccessGuard path="/creator-center">
-                                  <CreatorCenterPage />
-                                </AccessGuard>
-                              }
-                            />
                             
                             <Route
                               path="/search"
@@ -565,14 +555,6 @@ export default function App() {
                               element={
                                 <AccessGuard path="/gallery">
                                   <GalleryPage />
-                                </AccessGuard>
-                              }
-                            />
-                            <Route
-                              path="/templates"
-                              element={
-                                <AccessGuard path="/templates">
-                                  <TemplateMarketPage />
                                 </AccessGuard>
                               }
                             />

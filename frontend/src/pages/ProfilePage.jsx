@@ -1,56 +1,27 @@
 import React, { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import {
-  ArrowLeft,
-  Camera,
-  Copy,
-  Flame,
-  Gauge,
-  Loader2,
-  Lock,
-  Mail,
-  Save,
-  TrendingUp,
-  User as UserIcon,
-  KeyRound,
-  ShieldCheck,
-  CheckCircle2,
-} from 'lucide-react'
+import { KeyRound, ShieldCheck, CheckCircle2, Loader2, Trash2, Cpu } from 'lucide-react'
 import { api } from '../lib/api'
 import { useToast } from '../lib/toast'
-import { useI18n, LanguageSwitcher } from '../i18n/index.jsx'
 
-// 本地版信息（无会员等级概念，额度以后端配置为准）
-const MEMBERSHIP_META = {
-  free: {
-    label: '本地版',
-    desc: '按每日额度限制',
-    color: 'from-gray-500 to-gray-600',
-    badge: 'bg-gray-100 text-gray-600',
-    quota: 30,
-  },
-}
-
-export default function ProfilePage({ user, onUserUpdate }) {
+/**
+ * 个人中心（本地免费版 · 精简）
+ * 仅保留：中转站 API Key 配置（AI 计费走用户 Key）。
+ * 无密码/邮箱/额度/会员等概念——本地单机、按中转站 token 计费。
+ */
+export default function ProfilePage({ user }) {
   const toast = useToast()
-  const { t } = useI18n()
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  // 资料表单
-  const [nickname, setNickname] = useState('')
-  const [avatar, setAvatar] = useState('')
-  const [email, setEmail] = useState('')
-  const [saving, setSaving] = useState(false)
-  // v23 中转站 Key（模式 B：用户自带中转站 token，平台卖 token 盈利）
+  // 中转站 Key
   const [relayKey, setRelayKey] = useState('')
   const [relayConfigured, setRelayConfigured] = useState(false)
   const [relayMasked, setRelayMasked] = useState('')
   const [relaySaving, setRelaySaving] = useState(false)
   const [relayVerifying, setRelayVerifying] = useState(false)
+  const [relayModels, setRelayModels] = useState(0)
   const [relayBase, setRelayBase] = useState('')
 
-  // ── 中转站 Key（模式 B） ──
   const loadRelay = async () => {
     try {
       const res = await api.get('/api/relay/me')
@@ -61,14 +32,20 @@ export default function ProfilePage({ user, onUserUpdate }) {
       /* 静默 */
     }
   }
+
   useEffect(() => {
+    api
+      .get('/api/auth/me')
+      .then((res) => setProfile(res.data))
+      .catch(() => {})
+      .finally(() => setLoading(false))
     loadRelay()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const saveRelay = async () => {
     if (!relayKey.trim()) {
-      toast.error('请输入中转站 API Key')
+      toast.warning('请输入中转站 API Key')
       return
     }
     setRelaySaving(true)
@@ -76,10 +53,14 @@ export default function ProfilePage({ user, onUserUpdate }) {
       const res = await api.put('/api/relay/me', { api_key: relayKey.trim() })
       setRelayConfigured(true)
       setRelayMasked(res.data.api_key_masked)
+      setRelayModels(res.data.models || 0)
       setRelayKey('')
-      toast.success(res.data.message)
+      const hint = res.data.models
+        ? `模型列表已从中转站同步（${res.data.models} 个），各创作页可自由切换模型`
+        : 'Key 已保存，但模型列表同步失败，可重新保存重试'
+      toast.success(hint, 5000)
     } catch (e) {
-      toast.error(e.message || '保存失败，请确认是本站签发的 Key')
+      toast.error(e.message || 'Key 保存失败，请确认是本站签发的中转站 Key')
     } finally {
       setRelaySaving(false)
     }
@@ -87,13 +68,13 @@ export default function ProfilePage({ user, onUserUpdate }) {
 
   const verifyRelay = async () => {
     if (!relayKey.trim()) {
-      toast.error('请输入要校验的 API Key')
+      toast.warning('请输入中转站 API Key')
       return
     }
     setRelayVerifying(true)
     try {
       const res = await api.post('/api/relay/verify', { api_key: relayKey.trim() })
-      toast.success(res.data.message)
+      toast.success(res.data.message || 'Key 有效，可以正常使用')
     } catch (e) {
       toast.error(e.message || 'Key 无效')
     } finally {
@@ -102,360 +83,72 @@ export default function ProfilePage({ user, onUserUpdate }) {
   }
 
   const clearRelay = async () => {
+    if (!window.confirm('确定清除中转站 Key 吗？AI 功能将不可用（需重新配置）。')) return
     try {
       await api.delete('/api/relay/me')
       setRelayConfigured(false)
       setRelayMasked('')
-      toast.success('已清除中转站 Key，回退平台默认计费')
+      setRelayModels(0)
+      toast.success('已清除中转站 Key 与模型列表')
     } catch (e) {
       toast.error(e.message || '清除失败')
     }
   }
 
-  // 密码表单
-  const [oldPwd, setOldPwd] = useState('')
-  const [newPwd, setNewPwd] = useState('')
-  const [confirmPwd, setConfirmPwd] = useState('')
-  const [changingPwd, setChangingPwd] = useState(false)
-
-  useEffect(() => {
-    loadProfile()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  const loadProfile = async () => {
-    try {
-      const res = await api.get('/api/auth/me')
-      const data = res.data
-      setProfile(data)
-      setNickname(data.nickname || '')
-      setAvatar(data.avatar || '')
-      setEmail(data.email || '')
-    } catch (err) {
-      toast.error(err.message || '加载个人资料失败')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleSaveProfile = async (e) => {
-    e.preventDefault()
-    setSaving(true)
-    try {
-      const res = await api.put('/api/auth/me', {
-        nickname: nickname.trim(),
-        avatar: avatar.trim(),
-        email: email.trim(),
-      })
-      setProfile(res.data)
-      // 同步全局用户信息
-      if (onUserUpdate)
-        onUserUpdate({ ...user, nickname: res.data.nickname, avatar: res.data.avatar })
-      toast.success('个人资料已更新')
-    } catch (err) {
-      toast.error(err.message || '保存失败')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleChangePwd = async (e) => {
-    e.preventDefault()
-    if (newPwd.length < 6) {
-      toast.error('新密码至少 6 位')
-      return
-    }
-    if (newPwd !== confirmPwd) {
-      toast.error('两次输入的新密码不一致')
-      return
-    }
-    setChangingPwd(true)
-    try {
-      await api.put('/api/auth/password', { old_password: oldPwd, new_password: newPwd })
-      toast.success('密码已更新，下次登录请使用新密码')
-      setOldPwd('')
-      setNewPwd('')
-      setConfirmPwd('')
-    } catch (err) {
-      toast.error(err.message || '修改密码失败')
-    } finally {
-      setChangingPwd(false)
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64 text-ink-400">
-        <Loader2 className="w-6 h-6 animate-spin mr-2" />
-        加载中…
-      </div>
-    )
-  }
-
-  const meta = MEMBERSHIP_META[profile?.membership] || MEMBERSHIP_META.free
-  const dailyQuota = profile?.daily_quota || meta.quota
-  const usedToday = profile?.used_today || 0
-  const remaining = profile?.remaining_today ?? Math.max(0, dailyQuota - usedToday)
-  const usagePercent =
-    dailyQuota >= 9999 ? 0 : Math.min(100, Math.round((usedToday / dailyQuota) * 100))
-  const displayName = profile?.nickname || profile?.username || user?.username || '未命名用户'
-  const avatarUrl = profile?.avatar || ''
-
-  const inputCls =
-    'w-full px-3.5 py-2.5 border border-ink-200 rounded-xl focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none transition-all text-sm bg-white'
+  const displayName = profile?.nickname || profile?.username || user?.username || '本地用户'
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 animate-page-in">
-      {/* 页头 */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Link to="/home" className="p-2 hover:bg-ink-100 rounded-lg transition-colors text-ink-500">
-            <ArrowLeft className="w-5 h-5" />
-          </Link>
-          <div>
-            <h1 className="text-xl font-bold text-ink-900">个人中心</h1>
-            <p className="text-sm text-ink-500">管理个人资料、每日额度与中转站 Key</p>
-          </div>
+    <div className="max-w-3xl mx-auto">
+      {/* 头部 */}
+      <div className="flex items-center gap-4 mb-6">
+        <div className="w-14 h-14 bg-gradient-to-br from-brand-500 to-brand-700 rounded-2xl flex items-center justify-center text-white text-xl font-bold shadow-glow">
+          {displayName[0]?.toUpperCase()}
         </div>
-        <LanguageSwitcher />
+        <div>
+          <h1 className="text-xl font-bold text-ink-900">{displayName}</h1>
+          <p className="text-sm text-ink-500">
+            本地免费运行 · AI 费用由你的中转站 Key 计费 · 数据仅存本机
+          </p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* 左列：头像 + 额度 + 会员 */}
-        <div className="space-y-6 lg:col-span-1">
-          {/* 头像卡片 */}
-          <div className="bg-white rounded-2xl border border-ink-200/60 shadow-soft p-6 text-center">
-            {avatarUrl ? (
-              <img
-                src={avatarUrl}
-                alt="头像"
-                className="w-20 h-20 rounded-2xl object-cover mx-auto shadow-soft border-2 border-brand-100"
-              />
-            ) : (
-              <div className="w-20 h-20 bg-gradient-to-br from-brand-500 to-brand-700 rounded-2xl flex items-center justify-center mx-auto shadow-glow">
-                <span className="text-white text-2xl font-bold">
-                  {displayName[0]?.toUpperCase()}
-                </span>
-              </div>
-            )}
-            <h2 className="text-lg font-bold text-ink-900 mt-3">{displayName}</h2>
-            <p className="text-sm text-ink-500">@{profile?.username}</p>
-            <div className="flex items-center justify-center gap-2 mt-3">
-              <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${meta.badge}`}>
-                {meta.label}
-              </span>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-ink-100 text-ink-600 capitalize">
-                {profile?.role}
-              </span>
-            </div>
-
-          </div>
-
-          {/* 额度卡片 */}
-          <div className="bg-white rounded-2xl border border-ink-200/60 shadow-soft p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-ink-900 flex items-center gap-2">
-                <Gauge className="w-4 h-4 text-brand-500" />
-                今日额度
-              </h3>
-              <span
-                className={`text-xs font-medium px-2 py-0.5 rounded-full bg-gradient-to-r ${meta.color} text-white`}
-              >
-                {meta.label}
-              </span>
-            </div>
-            {(
-              <>
-                <div className="flex items-end justify-between mb-2">
-                  <div>
-                    <span className="text-3xl font-bold text-ink-900">{remaining}</span>
-                    <span className="text-sm text-ink-400 ml-1">次剩余</span>
-                  </div>
-                  <span className="text-xs text-ink-400">
-                    已用 {usedToday} / {dailyQuota}
-                  </span>
-                </div>
-                <div className="h-2.5 bg-ink-100 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full bg-gradient-to-r ${meta.color} transition-all duration-500`}
-                    style={{ width: `${usagePercent}%` }}
-                  />
-                </div>
-                <p className="text-xs text-ink-400 mt-2">每日 0 点自动重置</p>
-              </>
-            )}
-            <div className="mt-4 pt-4 border-t border-ink-100 flex items-center justify-between text-sm">
-              <span className="text-ink-500 flex items-center gap-1.5">
-                <TrendingUp className="w-4 h-4 text-brand-400" />
-                累计使用
-              </span>
-              <span className="font-semibold text-ink-800">{profile?.total_usage || 0} 次</span>
-            </div>
-          </div>
-
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="w-6 h-6 animate-spin text-brand-500" />
         </div>
-
-        {/* 右列：资料 + 密码 */}
-        <div className="space-y-6 lg:col-span-2">
-          {/* 基本资料 */}
-          <div className="bg-white rounded-2xl border border-ink-200/60 shadow-soft p-6">
-            <h3 className="font-semibold text-ink-900 flex items-center gap-2 mb-5">
-              <UserIcon className="w-4 h-4 text-brand-500" />
-              基本资料
-            </h3>
-            <form onSubmit={handleSaveProfile} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-ink-700 mb-1.5">昵称</label>
-                  <input
-                    type="text"
-                    value={nickname}
-                    onChange={(e) => setNickname(e.target.value)}
-                    className={inputCls}
-                    placeholder="设置一个昵称"
-                    maxLength={30}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-ink-700 mb-1.5">
-                    用户名（不可修改）
-                  </label>
-                  <input
-                    type="text"
-                    value={profile?.username || ''}
-                    disabled
-                    className={`${inputCls} bg-ink-50 text-ink-400`}
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-ink-700 mb-1.5">邮箱</label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400" />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className={`${inputCls} pl-10`}
-                    placeholder="用于密码重置与试用提醒（如 xx@163.com）"
-                    maxLength={120}
-                  />
-                </div>
-                <p className="text-xs text-ink-400 mt-1.5">填写后可接收密码重置、试用到期等邮件通知</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-ink-700 mb-1.5">头像 URL</label>
-                <div className="relative">
-                  <Camera className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400" />
-                  <input
-                    type="text"
-                    value={avatar}
-                    onChange={(e) => setAvatar(e.target.value)}
-                    className={`${inputCls} pl-10`}
-                    placeholder="https://example.com/avatar.png（留空使用默认头像）"
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end">
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="px-5 py-2.5 bg-gradient-to-r from-brand-500 to-brand-600 text-white rounded-xl font-medium hover:from-brand-600 hover:to-brand-700 disabled:opacity-60 transition-all shadow-soft flex items-center gap-2"
-                >
-                  {saving ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Save className="w-4 h-4" />
-                  )}
-                  保存资料
-                </button>
-              </div>
-            </form>
-          </div>
-
-          {/* 修改密码 */}
-          <div className="bg-white rounded-2xl border border-ink-200/60 shadow-soft p-6">
-            <h3 className="font-semibold text-ink-900 flex items-center gap-2 mb-5">
-              <Lock className="w-4 h-4 text-brand-500" />
-              修改密码
-            </h3>
-            <form onSubmit={handleChangePwd} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-ink-700 mb-1.5">原密码</label>
-                <input
-                  type="password"
-                  value={oldPwd}
-                  onChange={(e) => setOldPwd(e.target.value)}
-                  className={inputCls}
-                  placeholder="请输入当前密码"
-                  autoComplete="current-password"
-                />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-ink-700 mb-1.5">新密码</label>
-                  <input
-                    type="password"
-                    value={newPwd}
-                    onChange={(e) => setNewPwd(e.target.value)}
-                    className={inputCls}
-                    placeholder="至少 6 位"
-                    autoComplete="new-password"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-ink-700 mb-1.5">
-                    确认新密码
-                  </label>
-                  <input
-                    type="password"
-                    value={confirmPwd}
-                    onChange={(e) => setConfirmPwd(e.target.value)}
-                    className={inputCls}
-                    placeholder="再次输入新密码"
-                    autoComplete="new-password"
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end">
-                <button
-                  type="submit"
-                  disabled={changingPwd || !oldPwd || !newPwd}
-                  className="px-5 py-2.5 bg-ink-800 text-white rounded-xl font-medium hover:bg-ink-900 disabled:opacity-50 transition-all flex items-center gap-2"
-                >
-                  {changingPwd ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Flame className="w-4 h-4" />
-                  )}
-                  修改密码
-                </button>
-              </div>
-            </form>
-          </div>
-
-          {/* 中转站 API Key（模式 B：AI 功能使用用户自带的中转站 token） */}
-          <div className="mt-6 bg-white rounded-2xl border border-amber-200 p-5">
-            <h3 className="text-base font-semibold text-ink-900 mb-1 flex items-center gap-2">
-              <KeyRound className="w-4.5 h-4.5 text-amber-500" />
-              中转站 API Key
-            </h3>
-            <p className="text-xs text-ink-400 mb-4">
-              填写本站签发的 API Key 后，AI 功能（对话/图片/视频/配音）将使用你的 Key 计费。
-              未填写时使用平台默认额度。中转站地址由平台固定，不可更改。
+      ) : (
+        <div className="space-y-6">
+          {/* 中转站 API Key（唯一配置项） */}
+          <div className="bg-white rounded-2xl border border-amber-200 shadow-soft p-6">
+            <div className="flex items-start justify-between mb-2">
+              <h3 className="text-base font-semibold text-ink-900 flex items-center gap-2">
+                <KeyRound className="w-4.5 h-4.5 text-amber-500" />
+                中转站 API Key
+              </h3>
+              {relayConfigured && (
+                <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-full px-2.5 py-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  已配置{relayModels ? ` · ${relayModels} 个模型` : ''}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-ink-400 mb-4 leading-relaxed">
+              填写本站签发的中转站 Key 后，AI 功能（图片/视频/配音/数字人/工具）将使用你的 Key
+              计费，并从你的中转站拉取模型列表（各创作页可自由切换模型）。中转站地址由平台固定，不可更改。
             </p>
 
             {relayConfigured && (
               <div className="mb-3 p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">
                 <div className="flex items-center gap-2 text-sm text-emerald-700">
                   <CheckCircle2 className="w-4 h-4" />
-                  已配置：<code className="font-mono">{relayMasked}</code>
+                  当前 Key：<code className="font-mono">{relayMasked}</code>
                   <span className="text-xs text-emerald-500">（{relayBase}）</span>
                 </div>
                 <button
                   onClick={clearRelay}
-                  className="text-xs text-red-500 hover:text-red-700 font-medium"
+                  className="inline-flex items-center gap-1 text-xs text-red-500 hover:text-red-700 font-medium"
                 >
+                  <Trash2 className="w-3.5 h-3.5" />
                   清除
                 </button>
               </div>
@@ -469,7 +162,7 @@ export default function ProfilePage({ user, onUserUpdate }) {
                   value={relayKey}
                   onChange={(e) => setRelayKey(e.target.value)}
                   placeholder="sk- 开头的中转站 Key"
-                  className={inputCls}
+                  className="w-full px-3.5 py-2.5 border border-ink-200 rounded-xl focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 outline-none transition-all"
                   autoComplete="off"
                 />
                 <p className="text-xs text-ink-400 mt-1.5">
@@ -480,15 +173,15 @@ export default function ProfilePage({ user, onUserUpdate }) {
                 <button
                   onClick={saveRelay}
                   disabled={relaySaving || !relayKey.trim()}
-                  className="px-5 py-2.5 bg-amber-500 text-white rounded-xl font-medium hover:bg-amber-600 disabled:opacity-50 transition-all flex items-center gap-2"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-amber-500 text-white rounded-xl font-medium hover:bg-amber-600 disabled:opacity-50 transition-all"
                 >
                   {relaySaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
-                  保存并启用
+                  保存并同步模型
                 </button>
                 <button
                   onClick={verifyRelay}
                   disabled={relayVerifying || !relayKey.trim()}
-                  className="px-5 py-2.5 bg-ink-100 text-ink-700 rounded-xl font-medium hover:bg-ink-200 disabled:opacity-50 transition-all flex items-center gap-2"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-ink-100 text-ink-700 rounded-xl font-medium hover:bg-ink-200 disabled:opacity-50 transition-all"
                 >
                   {relayVerifying ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
                   仅校验
@@ -496,8 +189,22 @@ export default function ProfilePage({ user, onUserUpdate }) {
               </div>
             </div>
           </div>
+
+          {/* 使用说明 */}
+          <div className="bg-white rounded-2xl border border-ink-200/60 shadow-soft p-6">
+            <h3 className="text-base font-semibold text-ink-900 flex items-center gap-2 mb-3">
+              <Cpu className="w-4 h-4 text-brand-500" />
+              模型说明
+            </h3>
+            <ul className="text-sm text-ink-500 space-y-2 leading-relaxed">
+              <li>· 配置中转站 Key 后，平台自动拉取你中转站的模型列表（不写死任何模型）</li>
+              <li>· 图片/视频/配音/数字人等创作页均有模型选择器，可自由切换</li>
+              <li>· 切换会按功能保存偏好，下次打开同一页面自动使用</li>
+              <li>· 侧边栏底部「模型」可随时切换全局默认模型</li>
+            </ul>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

@@ -231,14 +231,6 @@ const COMMANDS = [
     path: '/gallery',
     category: '应用与社区',
   },
-  {
-    id: 'nav-templates',
-    label: '模板市场',
-    description: '游戏/小程序/表情包/配音模板聚合',
-    icon: Store,
-    path: '/templates',
-    category: '应用与社区',
-  },
 
   // 办公效率
   {

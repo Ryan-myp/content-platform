@@ -154,7 +154,6 @@ const DEFAULT_NAV_ITEMS = [
       { path: '/monitor', label: '竞品监控', icon: Radar, pageId: 'monitor' },
       { path: '/growth', label: '增长工坊', icon: Target, pageId: 'growth' },
       { path: '/gallery', label: '作品广场', icon: GalleryVerticalEnd, pageId: 'gallery' },
-      { path: '/templates', label: '模板市场', icon: Store, pageId: 'templates' },
     ],
   },
   {
@@ -168,7 +167,6 @@ const DEFAULT_NAV_ITEMS = [
       { path: '/data-analyzer', label: '数据分析沙箱', icon: BarChart3, pageId: 'data-analyzer' },
       { path: '/stock', label: '股票分析', icon: Landmark, pageId: 'stock' },
       { path: '/pdf-tools', label: 'PDF工具集', icon: FileSearch, pageId: 'pdf-tools' },
-      { path: '/creator-center', label: '创作者中心', icon: Star },
       { path: '/search', label: '全局搜索', icon: Search, pageId: 'search' },
     ],
   },
