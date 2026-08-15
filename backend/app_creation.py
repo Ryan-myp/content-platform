@@ -93,6 +93,15 @@ async def lifespan(app: FastAPI):
         ensure_game_tables()
     except Exception:
         pass
+    # 口播短视频流水线表（pipeline._ensure_tables）
+    try:
+        from pipeline import _ensure_tables as _ensure_pipeline_tables
+
+        conn = get_db()
+        _ensure_pipeline_tables(conn)
+        conn.close()
+    except Exception:
+        pass
     from task_queue import start_workers  # noqa: E402
     start_workers()
     yield
@@ -245,6 +254,7 @@ from task_queue import router as task_queue_router  # noqa: E402
 from platform_api import router as platform_api_router  # noqa: E402
 from video_templates import router as video_templates_router  # noqa: E402
 from app_extra import router as app_extra_router  # noqa: E402
+from pipeline import router as pipeline_router  # noqa: E402
 
 # 注意注册顺序：/api/tasks 冲突时 task_queue 优先（与主仓库 routers.py 一致）
 for r in [
@@ -261,7 +271,7 @@ for r in [
     realtime_router, extended_api_router, template_store_router,
     templates_market_router, apikey_api_router,
     task_queue_router, platform_api_router, video_templates_router,
-    app_extra_router,
+    app_extra_router, pipeline_router,
 ]:
     app.include_router(r)
 

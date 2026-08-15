@@ -54,6 +54,7 @@ import {
   GalleryVerticalEnd,
   Store,
   Clapperboard,
+  Rocket,
   Globe,
   Key,
   Keyboard,
@@ -95,6 +96,16 @@ const ICONS = {
 
 // 默认导航（通用版兜底）
 const DEFAULT_NAV_ITEMS = [
+  {
+    key: 'pipeline',
+    label: '口播视频工厂',
+    icon: Rocket,
+    color: 'from-rose-500 to-orange-500',
+    badge: '新',
+    items: [
+      { path: '/pipeline', label: '口播短视频工厂', icon: Rocket, pageId: 'pipeline' },
+    ],
+  },
   {
     key: 'home',
     label: '工作台',

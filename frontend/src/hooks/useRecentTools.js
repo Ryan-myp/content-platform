@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback } from 'react'
 // v17-F：TOOL_META 同时供 App.jsx 路由级页面标题使用（单份数据源，两处消费）
 export const TOOL_META = {
   '/tasks': { label: '任务中心', icon: '✅' },
+  '/pipeline': { label: '口播短视频工厂', icon: '🚀' },
   '/digital-human': { label: 'AI 数字人', icon: '🎭' },
   '/meme': { label: '表情包工坊', icon: '😀' },
   '/music-factory': { label: '音乐工厂', icon: '🎵' },

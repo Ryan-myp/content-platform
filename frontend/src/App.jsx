@@ -55,6 +55,7 @@ const ShortDramaPage = lazy(() => import('./pages/ShortDramaPage'))
 const VoicePage = lazy(() => import('./pages/VoicePage'))
 const MemePage = lazy(() => import('./pages/MemePage'))
 const DigitalHumanPage = lazy(() => import('./pages/DigitalHumanPage'))
+const PipelinePage = lazy(() => import('./pages/PipelinePage'))
 const VoiceChatPage = lazy(() => import('./pages/VoiceChatPage'))
 const VideoAnalyzerPage = lazy(() => import('./pages/VideoAnalyzerPage'))
 const MindMapPage = lazy(() => import('./pages/MindMapPage'))
@@ -456,6 +457,14 @@ export default function App() {
                               element={
                                 <AccessGuard path="/digital-human">
                                   <DigitalHumanPage />
+                                </AccessGuard>
+                              }
+                            />
+                            <Route
+                              path="/pipeline"
+                              element={
+                                <AccessGuard path="/pipeline">
+                                  <PipelinePage />
                                 </AccessGuard>
                               }
                             />
