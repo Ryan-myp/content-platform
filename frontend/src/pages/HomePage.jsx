@@ -402,7 +402,7 @@ const SCENE_GROUPS = [
       {
         label: '会员中心',
         desc: '额度与权益',
-        path: '/profile',
+        path: '/membership',
         icon: Crown,
         keywords: '会员,权益,额度',
       },

@@ -97,8 +97,16 @@ def sync_backend(verbose=True):
     return synced
 
 
+# 前端定制文件：sync 不覆盖（content-platform 特有精简/适配，由 patches.py 维护）
+CUSTOM_FRONTEND_FILES = {
+    'App.jsx',
+    'components/Sidebar.jsx',
+    'pages/ProfilePage.jsx',
+}
+
+
 def sync_frontend(verbose=True):
-    """同步前端页面（保留 content-platform 的精简 App.jsx/Sidebar）。"""
+    """同步前端页面（保留 content-platform 的精简 App.jsx/Sidebar/ProfilePage）。"""
     synced = []
     # 同步 pages/（删除的研发页面不复制回来——只同步存在的页面）
     src_pages = os.path.join(MAIN_FRONTEND, 'pages')
@@ -108,16 +116,27 @@ def sync_frontend(verbose=True):
             continue
         src = os.path.join(src_pages, fn)
         dst = os.path.join(dst_pages, fn)
+        rel = 'pages/' + fn
+        if rel in CUSTOM_FRONTEND_FILES:
+            continue  # 定制页面不覆盖（content-platform 特有精简）
         if os.path.exists(dst):
             # 只覆盖 content-platform 已存在的页面（保持精简清单，不新增研发/智能体页）
             shutil.copy2(src, dst)
-            synced.append('pages/' + fn)
+            synced.append(rel)
     # 同步 components/ lib/ hooks/（公共组件与工具）
     for sub in ('components', 'lib', 'hooks', 'i18n'):
         src = os.path.join(MAIN_FRONTEND, sub)
         dst = os.path.join(CP_FRONTEND, sub)
         if os.path.isdir(src):
-            shutil.copytree(src, dst, dirs_exist_ok=True)
+            # 逐文件同步，跳过定制文件
+            for fn in os.listdir(src):
+                rel = f'{sub}/{fn}'
+                if rel in CUSTOM_FRONTEND_FILES:
+                    continue
+                s = os.path.join(src, fn)
+                d = os.path.join(dst, fn)
+                if os.path.isfile(s):
+                    shutil.copy2(s, d)
             synced.append(sub + '/')
     # 注意：不覆盖 content-platform 的精简版 App.jsx / Sidebar.jsx
     if verbose:
