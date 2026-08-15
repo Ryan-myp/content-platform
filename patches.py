@@ -756,6 +756,10 @@ def _patch_no_hardcoded_models() -> int:
         ('music_factory.py',
          '    return {\n        "total_tracks": music_count,\n        "api_configured": bool(AGNES_API_KEY),',
          '    return {\n        "total_tracks": music_count,\n        "api_configured": bool(resolve_api_key()),'),
+        # llm.py：中转站 model_not_found 翻译为中文指引
+        ('common/llm.py',
+         '    if code == "content_policy_violation" or "content policy" in detail.lower():\n        msg += "；提示词可能包含平台受限内容，请调整个别描述词后重试"\n    return msg',
+         '    if code == "content_policy_violation" or "content policy" in detail.lower():\n        msg += "；提示词可能包含平台受限内容，请调整个别描述词后重试"\n    if (\n        code == "model_not_found"\n        or "not supported by any configured account" in detail.lower()\n        or "model_not_found" in body.lower()\n    ):\n        msg += "；该模型在你中转站账号未开通，请到中转站后台启用该模型，或换个已开通的模型"\n    elif "model_not_found" in code.lower() or "does not exist" in detail.lower():\n        msg += "；模型不存在，请到中转站模型列表选择实际可用的模型"\n    return msg'),
     ]
     n = 0
     for fname, old_t, new_t in edits:

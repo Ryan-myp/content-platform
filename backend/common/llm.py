@@ -154,6 +154,15 @@ def api_error_detail(exc: Exception) -> str:
         msg += f"（{code}）"
     if code == "content_policy_violation" or "content policy" in detail.lower():
         msg += "；提示词可能包含平台受限内容，请调整个别描述词后重试"
+    # 中转站账号级模型问题：给用户明确指引（模型未开通/无权限）
+    if (
+        code == "model_not_found"
+        or "not supported by any configured account" in detail.lower()
+        or "model_not_found" in body.lower()
+    ):
+        msg += "；该模型在你中转站账号未开通，请到中转站后台启用该模型，或换个已开通的模型"
+    elif "model_not_found" in code.lower() or "does not exist" in detail.lower():
+        msg += "；模型不存在，请到中转站模型列表选择实际可用的模型"
     return msg
 
 
