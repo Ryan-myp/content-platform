@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { KeyRound, ShieldCheck, CheckCircle2, Loader2, Trash2, Cpu } from 'lucide-react'
+import { KeyRound, ShieldCheck, CheckCircle2, Loader2, Trash2, Cpu, Film } from 'lucide-react'
 import { api } from '../lib/api'
 import { useToast } from '../lib/toast'
 
@@ -25,6 +25,12 @@ export default function ProfilePage({ user }) {
   const [provider, setProvider] = useState('aixinghuo')
   const [providers, setProviders] = useState(['aixinghuo', 'agnes'])
   const [providersStatus, setProvidersStatus] = useState({})  // {p: {configured, api_key_masked}}
+  // Pexels 素材 Key（短剧素材模式）
+  const [pexelsKey, setPexelsKey] = useState('')
+  const [pexelsConfigured, setPexelsConfigured] = useState(false)
+  const [pexelsMasked, setPexelsMasked] = useState('')
+  const [pexelsSaving, setPexelsSaving] = useState(false)
+  const [pexelsVerifying, setPexelsVerifying] = useState(false)
 
   const loadRelay = async () => {
     try {
@@ -124,6 +130,63 @@ export default function ProfilePage({ user }) {
       toast.error(e.message || '清除失败')
     }
   }
+
+  const loadPexels = async () => {
+    try {
+      const res = await api.get('/api/relay/me/pexels')
+      setPexelsConfigured(res.data.configured)
+      setPexelsMasked(res.data.api_key_masked || '')
+    } catch { /* 静默 */ }
+  }
+
+  const savePexels = async () => {
+    if (!pexelsKey.trim()) {
+      toast.warning('请输入 Pexels API Key')
+      return
+    }
+    setPexelsSaving(true)
+    try {
+      const res = await api.put('/api/relay/me/pexels', { api_key: pexelsKey.trim() })
+      setPexelsConfigured(true)
+      setPexelsMasked(res.data.api_key_masked)
+      setPexelsKey('')
+      toast.success(res.data.message || 'Pexels Key 已保存')
+    } catch (e) {
+      toast.error(e.message || 'Pexels Key 保存失败')
+    } finally {
+      setPexelsSaving(false)
+    }
+  }
+
+  const verifyPexels = async () => {
+    if (!pexelsKey.trim()) {
+      toast.warning('请输入 Pexels API Key')
+      return
+    }
+    setPexelsVerifying(true)
+    try {
+      await api.put('/api/relay/me/pexels', { api_key: pexelsKey.trim() })
+      toast.success('Pexels Key 有效')
+    } catch (e) {
+      toast.error(e.message || 'Pexels Key 无效')
+    } finally {
+      setPexelsVerifying(false)
+    }
+  }
+
+  const clearPexels = async () => {
+    if (!window.confirm('确定清除 Pexels Key 吗？短剧素材模式将无法拉取真实素材。')) return
+    try {
+      await api.delete('/api/relay/me/pexels')
+      setPexelsConfigured(false)
+      setPexelsMasked('')
+      toast.success('已清除 Pexels Key')
+    } catch (e) {
+      toast.error(e.message || '清除失败')
+    }
+  }
+
+  useEffect(() => { loadPexels() }, [])
 
   const displayName = profile?.nickname || profile?.username || user?.username || '本地用户'
 
@@ -278,6 +341,70 @@ export default function ProfilePage({ user }) {
                   仅校验
                 </button>
               </div>
+            </div>
+          </div>
+
+          {/* Pexels 素材 Key（短剧素材模式） */}
+          <div className="bg-white rounded-2xl border border-sky-200 shadow-soft p-6">
+            <div className="flex items-start justify-between mb-2">
+              <h3 className="text-base font-semibold text-ink-900 flex items-center gap-2">
+                <Film className="w-4.5 h-4.5 text-sky-500" />
+                Pexels 素材 Key（短剧素材模式）
+              </h3>
+              {pexelsConfigured && (
+                <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-full px-2.5 py-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  已配置
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-ink-400 mb-4 leading-relaxed">
+              短剧工厂的素材模式用它拉取真实竖屏视频素材（每镜自动匹配画面）。免费注册：
+              <a href="https://www.pexels.com/api/" target="_blank" rel="noreferrer" className="text-sky-500 hover:underline ml-1">
+                pexels.com/api ↗
+              </a>
+              。不配置时短剧将回退 AI 插画/渐变卡片模式（速度较慢）。
+            </p>
+            {pexelsConfigured && (
+              <div className="mb-3 p-3 bg-sky-50 border border-sky-200 rounded-xl flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm text-sky-700">
+                  <CheckCircle2 className="w-4 h-4" />
+                  当前 Key：<code className="font-mono">{pexelsMasked}</code>
+                </div>
+                <button
+                  onClick={clearPexels}
+                  className="inline-flex items-center gap-1 text-xs text-red-500 hover:text-red-700 font-medium"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  清除
+                </button>
+              </div>
+            )}
+            <div className="flex gap-2">
+              <input
+                type="password"
+                value={pexelsKey}
+                onChange={(e) => setPexelsKey(e.target.value)}
+                placeholder="Pexels API Key"
+                className="flex-1 px-3.5 py-2.5 border border-ink-200 rounded-xl focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 outline-none transition-all"
+                autoComplete="off"
+              />
+              <button
+                onClick={savePexels}
+                disabled={pexelsSaving || !pexelsKey.trim()}
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-sky-500 text-white rounded-xl font-medium hover:bg-sky-600 disabled:opacity-50 transition-all"
+              >
+                {pexelsSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Film className="w-4 h-4" />}
+                保存
+              </button>
+              <button
+                onClick={verifyPexels}
+                disabled={pexelsVerifying || !pexelsKey.trim()}
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-ink-100 text-ink-700 rounded-xl font-medium hover:bg-ink-200 disabled:opacity-50 transition-all"
+              >
+                {pexelsVerifying ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+                校验
+              </button>
             </div>
           </div>
 
