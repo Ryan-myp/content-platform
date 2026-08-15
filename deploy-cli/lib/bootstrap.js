@@ -6,7 +6,7 @@ import { execFileSync, execFile } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { findLocalBackend, BACKEND_CACHE } from './download.js'
+import { findLocalBackend, BACKEND_CACHE, CACHE_DIR } from './download.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -71,7 +71,8 @@ export async function getPythonVersion(pythonBin) {
  */
 export async function bootstrapPython(forceReinstall = false) {
   const projectRoot = resolveProjectRoot()
-  const venvPath = join(projectRoot, '.venv')
+  // venv 放稳定目录（升级刷新后端源码缓存时不被删除，避免每次更新重装依赖）
+  const venvPath = join(CACHE_DIR, 'venv')
   const venvPython = process.platform === 'win32'
     ? join(venvPath, 'Scripts', 'python.exe')
     : join(venvPath, 'bin', 'python')

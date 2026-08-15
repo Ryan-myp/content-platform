@@ -6,7 +6,7 @@
  *
  * 这样 npm 包保持轻量（仅前端 7MB），后端源码独立分发。
  */
-import { existsSync, mkdirSync, createWriteStream, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, createWriteStream, readFileSync, writeFileSync, copyFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { execFileSync } from 'node:child_process'
@@ -25,6 +25,27 @@ export const GITHUB_URL = `https://github.com/${REPO_OWNER}/${REPO_NAME}/archive
 // 本地缓存目录
 export const CACHE_DIR = join(os.homedir(), '.cache', 'code-platform')
 export const BACKEND_CACHE = join(CACHE_DIR, 'backend')
+// 用户数据（platform.db：中转站 Key、账号等）独立于后端源码缓存，
+// 升级刷新缓存时不会被删除 → 中转站 Key 不丢失
+export const DATA_DIR = join(CACHE_DIR, 'data')
+export const DB_PATH_STABLE = join(DATA_DIR, 'platform.db')
+
+/**
+ * 升级前保护用户数据：若旧后端缓存目录里有 platform.db（含中转站 Key），
+ * 迁移到稳定数据目录（仅首次迁移，之后直接使用稳定路径）。
+ */
+export function preserveData() {
+  try {
+    const oldDb = join(BACKEND_CACHE, 'platform.db')
+    if (existsSync(oldDb) && !existsSync(DB_PATH_STABLE)) {
+      mkdirSync(DATA_DIR, { recursive: true })
+      copyFileSync(oldDb, DB_PATH_STABLE)
+      console.log('  💾 已迁移本地数据（中转站 Key / 账号）到独立目录，升级不再丢失')
+    }
+  } catch {
+    /* 迁移失败不阻塞启动 */
+  }
+}
 // 后端缓存对应的 npm 包版本标记（升级时自动失效并重新下载）
 const BACKEND_VERSION_MARKER = join(CACHE_DIR, '.backend_version')
 
@@ -57,6 +78,7 @@ export function findLocalBackend() {
       return { path: BACKEND_CACHE, source: 'cache' }
     }
     console.log(`  🔄 npm 包已升级：后端缓存将刷新（删除旧缓存）`)
+    preserveData()
     try { execFileSync('rm', ['-rf', BACKEND_CACHE]) } catch {}
   }
   return null
@@ -97,6 +119,7 @@ export async function ensureBackend() {
   // 否则会多一层（backend/backend/）导致找不到 main.py 与 requirements.txt。
   console.log('  📦 解压中...')
   if (existsSync(BACKEND_CACHE)) {
+    preserveData()
     execFileSync('rm', ['-rf', BACKEND_CACHE])
   }
   mkdirSync(CACHE_DIR, { recursive: true })

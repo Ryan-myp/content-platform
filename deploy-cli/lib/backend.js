@@ -7,6 +7,7 @@ import net from 'node:net'
 import { BACKEND_DIR } from './bootstrap.js'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
+import { DB_PATH_STABLE, preserveData } from './download.js'
 
 let backendProc = null
 
@@ -59,10 +60,12 @@ export async function startBackend(venvPython, preferredPort = 8888) {
     console.log(`  ✅ 已改用端口 ${port}（可用）`)
   }
 
+  // 用户数据（中转站 Key 等）使用独立于源码缓存的稳定数据库路径，升级不丢
+  preserveData()
   console.log('  ⚙️  正在启动后端...')
   backendProc = spawn(venvPython, [entry], {
     cwd: BACKEND_DIR,
-    env: { ...process.env, PORT: String(port) },
+    env: { ...process.env, PORT: String(port), DB_PATH: DB_PATH_STABLE },
     stdio: ['ignore', 'pipe', 'pipe'],
   })
 
