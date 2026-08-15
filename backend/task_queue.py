@@ -463,6 +463,17 @@ def _run_handler(task_id: str) -> None:
     except (json.JSONDecodeError, TypeError):
         payload = {}
     ctx = {"username": row["created_by"] or "", "user_id": row["user_id"] or "", "role": row["role"] or ""}
+    # 模式 B：后台任务恢复用户的中转站 key（ContextVar 只在请求作用域内传递，
+    # worker 线程需从 DB 重新读取并注入，否则 resolve_api_key() 拿不到用户 key）
+    try:
+        from common.auth import get_user_relay_config
+        from common.relay_context import set_relay_context
+
+        _uid = row["user_id"] or ""
+        _relay = get_user_relay_config(_uid) if _uid else None
+        set_relay_context(_relay if _relay and _relay.get("api_key") else None)
+    except Exception:
+        pass
     try:
         result = fn(task_id, payload, lambda p, s: _update_progress(task_id, p, s), ctx)
         # async 处理器（内部 await call_llm_async 等）：worker 线程内新建事件循环执行
@@ -481,6 +492,12 @@ def _run_handler(task_id: str) -> None:
         logger.exception("task handler crashed %s", task_id)
         _mark_failed(task_id, str(e)[:500])
     finally:
+        try:
+            from common.relay_context import clear_relay_context
+
+            clear_relay_context()
+        except Exception:
+            pass
         _progress_throttle.pop(task_id, None)
 
 

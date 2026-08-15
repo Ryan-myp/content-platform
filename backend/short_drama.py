@@ -375,7 +375,7 @@ def _generate_scene_image(shot: str, anchors: str = "", refs: list[bytes] | None
         import requests
         from PIL import Image
         # 函数内取最新配置：config 表运行中修改后无需重启即时生效
-        from common.config import IMAGE_MODEL
+        from common.config import IMAGE_MODEL, require_model
         from common.llm import api_error_detail
 
         prompt = (
@@ -384,7 +384,7 @@ def _generate_scene_image(shot: str, anchors: str = "", refs: list[bytes] | None
             + shot
         )
         body = {
-            "model": IMAGE_MODEL,
+            "model": require_model(IMAGE_MODEL, "图片"),
             "prompt": prompt,
             "size": "1K",
             "ratio": "9:16",

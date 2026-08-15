@@ -247,6 +247,30 @@ def _patch_config_relay_models() -> int:
     if not m:
         return 0
     src = src[:m.start()] + 'DEFAULT_MODELS = []  # 本地版：模型不写死，来自用户中转站' + src[m.end():]
+    # 各功能默认模型也置空（不写死 agnes 模型）
+    for d in ('MODEL_NAME', 'IMAGE_MODEL', 'VIDEO_MODEL'):
+        src = re.sub(
+            d + r' = os\.environ\.get\("' + d + r'", "[^"]*"\)',
+            d + ' = os.environ.get("' + d + '", "")',
+            src,
+        )
+    # require_model 助手（工厂在未选择模型时给出清晰报错）
+    if 'def require_model(' not in src:
+        helper = '''
+
+def require_model(model_name: str, feature_label: str) -> str:
+    """校验并返回生效模型；为空时抛出清晰错误（本地版不写死任何模型）。"""
+    from fastapi import HTTPException
+
+    model_name = (model_name or "").strip()
+    if not model_name:
+        raise HTTPException(
+            400,
+            f"未选择{feature_label}模型：请先在个人中心配置中转站 Key，并在页面选择模型",
+        )
+    return model_name
+'''
+        src = src.rstrip() + helper
     open(path, 'w', encoding='utf-8').write(src)
     return 1
 
@@ -403,6 +427,110 @@ def _patch_relay_save_models() -> int:
     return n
 
 
+def _patch_no_hardcoded_models() -> int:
+    """各工厂：未选择模型时明确报错（不写死 agnes 默认），同步后重新接入。"""
+    edits = [
+        ('image_factory.py',
+         'model = payload.get("model") or IMAGE_MODEL',
+         'model = require_model(payload.get("model") or IMAGE_MODEL, "图片")'),
+        ('image_factory.py',
+         'from common.config import IMAGE_MODEL\n',
+         'from common.config import IMAGE_MODEL, require_model\n'),
+        ('image_factory.py',
+         '        tryon_request = {\n            "model": IMAGE_MODEL,',
+         '        from common.config import require_model\n\n        _tryon_model = require_model(IMAGE_MODEL, "AI 试衣")\n        tryon_request = {\n            "model": _tryon_model,'),
+        ('image_factory.py',
+         '    body = {\n        "model": "agnes-video-v2.0",',
+         '    from common.config import VIDEO_MODEL, require_model\n\n    _turntable_vid_model = require_model(payload.get("model") or VIDEO_MODEL, "视频")\n    body = {\n        "model": _turntable_vid_model,'),
+        ('image_factory.py',
+         '                        "model": IMAGE_MODEL,\n                        "prompt": f"{ai_background.strip()}, wide background',
+         '                        "model": require_model(IMAGE_MODEL, "图片"),\n                        "prompt": f"{ai_background.strip()}, wide background'),
+        ('video_factory.py',
+         'model = payload.get("model") or VIDEO_MODEL',
+         'model = require_model(payload.get("model") or VIDEO_MODEL, "视频")'),
+        ('video_factory.py',
+         'from common.config import VIDEO_MODEL\n\n    prompt = (payload.get("prompt") or "").strip()',
+         'from common.config import VIDEO_MODEL, require_model\n\n    prompt = (payload.get("prompt") or "").strip()'),
+        ('meme_factory.py',
+         'from common.config import IMAGE_MODEL\n',
+         'from common.config import IMAGE_MODEL, require_model\n'),
+        ('meme_factory.py',
+         '            "model": IMAGE_MODEL,\n            "prompt": prompt,\n            "size": "1024x1024",',
+         '            "model": require_model(IMAGE_MODEL, "表情包"),\n            "prompt": prompt,\n            "size": "1024x1024",'),
+        ('digital_human.py',
+         'from common.config import AGNES_API_BASE, AGNES_API_KEY, IMAGE_MODEL, resolve_api_key',
+         'from common.config import AGNES_API_BASE, AGNES_API_KEY, IMAGE_MODEL, require_model, resolve_api_key'),
+        ('digital_human.py',
+         '            payload = {\n                "model": IMAGE_MODEL,',
+         '            payload = {\n                "model": require_model(IMAGE_MODEL, "图片"),'),
+        ('short_drama.py',
+         'from common.config import IMAGE_MODEL\n        from common.llm import api_error_detail',
+         'from common.config import IMAGE_MODEL, require_model\n        from common.llm import api_error_detail'),
+        ('short_drama.py',
+         '        body = {\n            "model": IMAGE_MODEL,',
+         '        body = {\n            "model": require_model(IMAGE_MODEL, "图片"),'),
+    ]
+    n = 0
+    for fname, old_t, new_t in edits:
+        p = os.path.join(CP_BACKEND, fname)
+        if not os.path.exists(p):
+            continue
+        s = open(p, encoding='utf-8').read()
+        # 幂等保护：导入类编辑（行尾是换行、无前缀上下文）已含 require_model 时跳过，
+        # 避免 'from common.config import IMAGE_MODEL' 成为替换结果子串而重复追加
+        if old_t.endswith('\n') and 'require_model' in new_t and 'require_model' in s:
+            continue
+        if old_t in s:
+            s = s.replace(old_t, new_t, 1)
+            open(p, 'w', encoding='utf-8').write(s)
+            n += 1
+    return n
+
+
+def _patch_task_queue_relay() -> int:
+    """task_queue：后台任务恢复用户中转站 key（ContextVar 不在请求外传递）。"""
+    path = os.path.join(CP_BACKEND, 'task_queue.py')
+    if not os.path.exists(path):
+        return 0
+    src = open(path, encoding='utf-8').read()
+    if '后台任务恢复用户的中转站 key' in src:
+        return 0
+    old = '''    ctx = {"username": row["created_by"] or "", "user_id": row["user_id"] or "", "role": row["role"] or ""}
+    try:
+        result = fn(task_id, payload, lambda p, s: _update_progress(task_id, p, s), ctx)'''
+    new = '''    ctx = {"username": row["created_by"] or "", "user_id": row["user_id"] or "", "role": row["role"] or ""}
+    # 模式 B：后台任务恢复用户的中转站 key（ContextVar 只在请求作用域内传递）
+    try:
+        from common.auth import get_user_relay_config
+        from common.relay_context import set_relay_context
+
+        _uid = row["user_id"] or ""
+        _relay = get_user_relay_config(_uid) if _uid else None
+        set_relay_context(_relay if _relay and _relay.get("api_key") else None)
+    except Exception:
+        pass
+    try:
+        result = fn(task_id, payload, lambda p, s: _update_progress(task_id, p, s), ctx)'''
+    if old not in src:
+        return 0
+    src = src.replace(old, new, 1)
+    # finally 中清理 context
+    old2 = '''    finally:
+        _progress_throttle.pop(task_id, None)'''
+    new2 = '''    finally:
+        try:
+            from common.relay_context import clear_relay_context
+
+            clear_relay_context()
+        except Exception:
+            pass
+        _progress_throttle.pop(task_id, None)'''
+    if old2 in src:
+        src = src.replace(old2, new2, 1)
+    open(path, 'w', encoding='utf-8').write(src)
+    return 1
+
+
 def apply_all() -> int:
     """应用全部定制补丁，返回补丁数。"""
     total = 0
@@ -417,6 +545,8 @@ def apply_all() -> int:
     total += _patch_config_relay_base()
     total += _patch_auth_relay_quota()
     total += _patch_relay_save_models()
+    total += _patch_no_hardcoded_models()
+    total += _patch_task_queue_relay()
     return total
 
 

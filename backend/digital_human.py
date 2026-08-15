@@ -512,7 +512,7 @@ def _generate_portrait(avatar_id: str) -> str | None:
         "style, shallow depth of field, 8k uhd, hyper-realistic detail"
     )
 
-    from common.config import AGNES_API_BASE, AGNES_API_KEY, IMAGE_MODEL, resolve_api_key
+    from common.config import AGNES_API_BASE, AGNES_API_KEY, IMAGE_MODEL, require_model, resolve_api_key
     from common.llm import api_error_detail
 
     if not resolve_api_key():
@@ -527,7 +527,7 @@ def _generate_portrait(avatar_id: str) -> str | None:
             url = f"{AGNES_API_BASE}/images/generations"
             headers = {"Authorization": f"Bearer {resolve_api_key()}", "Content-Type": "application/json"}
             payload = {
-                "model": IMAGE_MODEL,
+                "model": require_model(IMAGE_MODEL, "图片"),
                 "prompt": prompt,
                 "size": size,
                 "n": 1,

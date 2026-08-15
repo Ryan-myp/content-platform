@@ -468,7 +468,7 @@ async def get_style_preview(filename: str):
 def _ai_bg(prompt: str) -> Image.Image:
     """文生图生成表情包背景，失败抛异常。"""
     # 函数内取最新配置：config 表运行中修改后无需重启即时生效
-    from common.config import IMAGE_MODEL
+    from common.config import IMAGE_MODEL, require_model
 
     if not resolve_api_key():
         raise HTTPException(400, "未配置中转站 API Key，AI 模式不可用（可先使用经典模板模式）")
@@ -476,7 +476,7 @@ def _ai_bg(prompt: str) -> Image.Image:
         f"{AGNES_API_BASE}/images/generations",
         headers={"Authorization": f"Bearer {resolve_api_key()}", "Content-Type": "application/json"},
         json={
-            "model": IMAGE_MODEL,
+            "model": require_model(IMAGE_MODEL, "表情包"),
             "prompt": prompt,
             "size": "1024x1024",
             "n": 1,

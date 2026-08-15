@@ -532,7 +532,7 @@ def normalize_size(size: str | None) -> str:
 async def _image_t2i_worker(payload: dict, progress: Callable | None = None) -> dict:  # noqa: C901
     """文生图（同步/异步任务共用执行体，异步时回报进度）。"""
     # 函数内取最新配置：config 表运行中修改后无需重启即时生效（与 resolve_api_key() 模块级绑定不同）
-    from common.config import IMAGE_MODEL
+    from common.config import IMAGE_MODEL, require_model
 
     if not resolve_api_key():
         raise HTTPException(400, "未配置中转站 API Key")
@@ -540,9 +540,10 @@ async def _image_t2i_worker(payload: dict, progress: Callable | None = None) -> 
     def _report(pct: float, stage: str) -> None:
         _notify_progress(progress, pct, stage)
 
+    from common.config import require_model
     prompt = payload.get("prompt") or ""
     size = payload.get("size") or DEFAULT_IMAGE_SIZE
-    model = payload.get("model") or IMAGE_MODEL
+    model = require_model(payload.get("model") or IMAGE_MODEL, "图片")
     batch_size, n = normalize_batch_params(payload.get("batch_size"), payload.get("n"))
     project_id = payload.get("project_id") or ""
     negative = payload.get("negative") or ""
@@ -693,7 +694,7 @@ def _pick_strength_by_preserve(strength: float, preserve: list | None) -> float:
 async def _image_i2i_worker(payload: dict, progress: Callable | None = None) -> dict:  # noqa: C901
     """图生图（同步/异步任务共用执行体，异步时回报进度）。"""
     # 函数内取最新配置：config 表运行中修改后无需重启即时生效
-    from common.config import IMAGE_MODEL
+    from common.config import IMAGE_MODEL, require_model
 
     if not resolve_api_key():
         raise HTTPException(400, "未配置中转站 API Key")
@@ -704,7 +705,7 @@ async def _image_i2i_worker(payload: dict, progress: Callable | None = None) -> 
     prompt = payload.get("prompt") or ""
     size = payload.get("size") or "1024x1024"
     strength = float(payload.get("strength") or 0.35)
-    model = payload.get("model") or IMAGE_MODEL
+    model = require_model(payload.get("model") or IMAGE_MODEL, "图片")
     project_id = payload.get("project_id") or ""
     negative = payload.get("negative") or ""
     # 保留内容：person/pose/background/composition（可多选），空=自由发挥
@@ -2204,8 +2205,11 @@ async def _image_tryon_worker(payload: dict, progress: Callable | None = None) -
             + "Photorealistic, high resolution, the person looks natural wearing the garment. "
         )
 
+        from common.config import require_model
+
+        _tryon_model = require_model(IMAGE_MODEL, "AI 试衣")
         tryon_request = {
-            "model": IMAGE_MODEL,
+            "model": _tryon_model,
             "prompt": garment_lock,
             "size": "1024x1024",
             "n": 1,
@@ -2340,8 +2344,11 @@ async def _image_turntable_worker(payload: dict, progress: Callable | None = Non
     if (num_frames - 1) % 8 != 0:
         num_frames = ((num_frames - 1) // 8) * 8 + 1
 
+    from common.config import VIDEO_MODEL, require_model
+
+    _turntable_vid_model = require_model(payload.get("model") or VIDEO_MODEL, "视频")
     body = {
-        "model": "agnes-video-v2.0",
+        "model": _turntable_vid_model,
         "prompt": prompt,
         "width": width,
         "height": height,
@@ -2491,7 +2498,7 @@ async def replace_background(
                     f"{AGNES_API_BASE}/images/generations",
                     headers={"Authorization": f"Bearer {resolve_api_key()}", "Content-Type": "application/json"},
                     json={
-                        "model": IMAGE_MODEL,
+                        "model": require_model(IMAGE_MODEL, "图片"),
                         "prompt": f"{ai_background.strip()}, wide background, no people, no text, soft lighting",
                         "size": f"{w}x{h}",
                         "n": 1,

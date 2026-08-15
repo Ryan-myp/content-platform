@@ -39,12 +39,24 @@ for _d in (ARTIFACTS_DIR, SKILLS_DIR, LOGS_DIR):
 AGNES_API_KEY = os.environ.get("AGNES_API_KEY", "")  # TODO: 从安全存储读取
 # 中转站地址平台写死（防用户指向其他服务商绕开计费）：爱星火 aixinghuo.net（OpenAI 兼容 /v1）
 AGNES_API_BASE = os.environ.get("AGNES_API_BASE", "https://aixinghuo.net/v1")
-MODEL_NAME = os.environ.get("MODEL_NAME", "agnes-2.5-flash")
-# 图片生成模型（image_factory / meme_factory / digital_human 文生图共用，
-# 可被 config 表 image_model 覆盖；改 gpt-image 等供应商模型时同步配好 API 通道）
-IMAGE_MODEL = os.environ.get("IMAGE_MODEL", "agnes-image-2.1-flash")
-# 视频生成模型（video_factory，可被 config 表 video_model 覆盖）
-VIDEO_MODEL = os.environ.get("VIDEO_MODEL", "agnes-video-v2.0")
+# 本地版模型不写死：默认均为空，模型全部来自用户中转站（配置 Key 后自动拉取）。
+# 前端各创作页会携带所选模型；未配置 Key/未选择模型时，工厂侧明确报错提示。
+MODEL_NAME = os.environ.get("MODEL_NAME", "")
+IMAGE_MODEL = os.environ.get("IMAGE_MODEL", "")
+VIDEO_MODEL = os.environ.get("VIDEO_MODEL", "")
+
+
+def require_model(model_name: str, feature_label: str) -> str:
+    """校验并返回生效模型；为空时抛出清晰错误（本地版不写死任何模型）。"""
+    from fastapi import HTTPException
+
+    model_name = (model_name or "").strip()
+    if not model_name:
+        raise HTTPException(
+            400,
+            f"未选择{feature_label}模型：请先在个人中心配置中转站 Key，并在页面选择模型",
+        )
+    return model_name
 
 # ── 视频生成备用通道（预留）：阿里云百炼 wan2.2 文生视频 ─────────
 # 配置 DASHSCOPE_API_KEY 后 video_factory 自动启用 dashscope 通道（agnes 失败时 failover）
