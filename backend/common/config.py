@@ -159,13 +159,29 @@ def get_llm_config() -> tuple[str, str, str]:
 
 
 def get_model_list() -> list[dict]:
-    """读取当前生效的模型列表（config 表 model_list，空则内置默认）。"""
+    """读取当前生效的模型列表（config 表 model_list，空则内置默认）。
+
+    v1.0.30：多供应商时优先读当前激活供应商的模型列表 model_list:{provider}，
+    未命中回退全局 model_list（兼容旧数据）。
+    """
     try:
         # 独立连接：避免关闭线程复用池连接，影响 async 端点中后续 get_db 的使用
         from common.db import get_db_context
 
+        key = "model_list"
+        try:
+            from common.relay_context import get_relay_context
+
+            ctx = get_relay_context()
+            provider = (ctx or {}).get("provider") or ""
+            if provider:
+                key = f"model_list:{provider}"
+        except Exception:
+            pass
         with get_db_context() as conn:
-            row = conn.execute("SELECT value FROM config WHERE key='model_list'").fetchone()
+            row = conn.execute("SELECT value FROM config WHERE key=?", (key,)).fetchone()
+            if not row and key != "model_list":
+                row = conn.execute("SELECT value FROM config WHERE key='model_list'").fetchone()
         raw = row["value"] if row else ""
         if raw:
             models = json.loads(raw)

@@ -24,6 +24,7 @@ export default function ProfilePage({ user }) {
   const [registerUrl, setRegisterUrl] = useState('https://aixinghuo.net/')
   const [provider, setProvider] = useState('aixinghuo')
   const [providers, setProviders] = useState(['aixinghuo', 'agnes'])
+  const [providersStatus, setProvidersStatus] = useState({})  // {p: {configured, api_key_masked}}
 
   const loadRelay = async () => {
     try {
@@ -34,6 +35,7 @@ export default function ProfilePage({ user }) {
       if (res.data.register_url) setRegisterUrl(res.data.register_url)
       if (res.data.provider) setProvider(res.data.provider)
       if (Array.isArray(res.data.providers)) setProviders(res.data.providers)
+      if (res.data.providers_status) setProvidersStatus(res.data.providers_status)
     } catch {
       /* 静默 */
     }
@@ -61,6 +63,7 @@ export default function ProfilePage({ user }) {
       setRelayMasked(res.data.api_key_masked)
       setRelayModels(res.data.models || 0)
       setRelayKey('')
+      loadRelay()
       const hint = res.data.models
         ? `模型列表已从中转站同步（${res.data.models} 个），各创作页可自由切换模型`
         : 'Key 已保存，但模型列表同步失败，可重新保存重试'
@@ -70,6 +73,24 @@ export default function ProfilePage({ user }) {
       toast.error(e.message || 'Key 保存失败，请确认是本站签发的中转站 Key')
     } finally {
       setRelaySaving(false)
+    }
+  }
+
+  const activateProvider = async (p) => {
+    if (p === provider) return
+    if (!providersStatus[p]?.configured) {
+      setProvider(p)
+      return
+    }
+    try {
+      const res = await api.post(`/api/relay/me/activate?provider=${p}`)
+      setProvider(p)
+      setRelayConfigured(true)
+      loadRelay()
+      toast.success(res.data.message || `已切换到 ${p}`)
+      window.dispatchEvent(new CustomEvent('models-updated'))
+    } catch (e) {
+      toast.error(e.message || '切换失败')
     }
   }
 
@@ -96,7 +117,8 @@ export default function ProfilePage({ user }) {
       setRelayConfigured(false)
       setRelayMasked('')
       setRelayModels(0)
-      toast.success('已清除中转站 Key 与模型列表')
+      loadRelay()
+      toast.success('已清除当前供应商的中转站 Key')
       window.dispatchEvent(new CustomEvent('models-updated'))
     } catch (e) {
       toast.error(e.message || '清除失败')
@@ -136,7 +158,8 @@ export default function ProfilePage({ user }) {
               {relayConfigured && (
                 <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-full px-2.5 py-1">
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  已配置{relayModels ? ` · ${relayModels} 个模型` : ''}
+                  {provider === 'aixinghuo' ? '爱星火' : 'AGNES'} 已配置
+                  {relayModels ? ` · ${relayModels} 个模型` : ''}
                 </span>
               )}
             </div>
@@ -187,28 +210,40 @@ export default function ProfilePage({ user }) {
               <div>
                 <label className="block text-sm font-medium text-ink-700 mb-1.5">供应商</label>
                 <div className="grid grid-cols-2 gap-2">
-                  {providers.map((p) => (
-                    <button
-                      key={p}
-                      type="button"
-                      onClick={() => setProvider(p)}
-                      className={`px-3 py-2.5 rounded-xl border text-sm transition-all text-left ${
-                        provider === p
-                          ? 'border-amber-500 bg-amber-50 text-amber-800 font-medium'
-                          : 'border-ink-200 text-ink-600 hover:border-amber-300'
-                      }`}
-                    >
-                      <span className="block font-medium">
-                        {p === 'aixinghuo' ? '爱星火中转站' : 'AGNES 官方 API'}
-                      </span>
-                      <span className="block text-[11px] text-ink-400 mt-0.5">
-                        {p === 'aixinghuo' ? 'aixinghuo.net · 需充值' : 'apihub.agnes-ai.cn · 有免费额度'}
-                      </span>
-                    </button>
-                  ))}
+                  {providers.map((p) => {
+                    const st = providersStatus[p] || {}
+                    return (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => activateProvider(p)}
+                        className={`px-3 py-2.5 rounded-xl border text-sm transition-all text-left ${
+                          provider === p
+                            ? 'border-amber-500 bg-amber-50 text-amber-800 font-medium'
+                            : 'border-ink-200 text-ink-600 hover:border-amber-300'
+                        }`}
+                      >
+                        <span className="flex items-center justify-between">
+                          <span className="block font-medium">
+                            {p === 'aixinghuo' ? '爱星火中转站' : 'AGNES 官方 API'}
+                          </span>
+                          {st.configured && (
+                            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-emerald-600 bg-emerald-50 rounded-full px-1.5 py-0.5">
+                              <CheckCircle2 className="w-3 h-3" />
+                              {provider === p ? '使用中' : '已配置'}
+                            </span>
+                          )}
+                        </span>
+                        <span className="block text-[11px] text-ink-400 mt-0.5">
+                          {p === 'aixinghuo' ? 'aixinghuo.net · 需充值' : 'apihub.agnes-ai.cn · 有免费额度'}
+                          {st.configured && provider !== p ? ` · ${st.api_key_masked}` : ''}
+                        </span>
+                      </button>
+                    )
+                  })}
                 </div>
                 <p className="text-[11px] text-ink-400 mt-1.5">
-                  选择供应商后，保存 Key 会自动从该供应商拉取模型列表；切换供应商需重新填对应的 Key
+                  两个中转站可同时保存 Key，各自独立生效；点击已配置的供应商即可一键切换，无需重新填写
                 </p>
               </div>
               <div>

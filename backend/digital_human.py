@@ -484,10 +484,11 @@ def _get_portrait_url(avatar_id: str) -> str:
     return f"/api/image-factory/avatars/{avatar_id}.jpg"
 
 
-def _generate_portrait(avatar_id: str) -> str | None:
+def _generate_portrait(avatar_id: str, uid: str = "") -> str | None:
     """调用 AI 图片生成 API 为指定数字人生成写真肖像。
 
     返回本地文件路径，失败返回 None。
+    uid: 用户 id，用于回退用户图片模型偏好（本地版不写死模型）。
     """
     avatar = next((a for a in AVATARS if a["id"] == avatar_id), None)
     if not avatar:
@@ -526,8 +527,10 @@ def _generate_portrait(avatar_id: str) -> str | None:
 
             url = f"{resolve_api_base()}/images/generations"
             headers = {"Authorization": f"Bearer {resolve_api_key()}", "Content-Type": "application/json"}
+            from common.config import resolve_feature_model
+
             payload = {
-                "model": require_model(IMAGE_MODEL, "图片"),
+                "model": require_model(resolve_feature_model(uid, "image", IMAGE_MODEL), "图片"),
                 "prompt": prompt,
                 "size": size,
                 "n": 1,
@@ -3261,7 +3264,8 @@ async def generate_portrait(avatar_id: str, current_user: dict = require_auth())
             "message": f"{avatar['name']} 写真已存在，直接使用缓存",
         }
 
-    result = await asyncio.to_thread(_generate_portrait, avatar_id)
+    _uid = current_user.get("user_id", "") if isinstance(current_user, dict) else ""
+    result = await asyncio.to_thread(_generate_portrait, avatar_id, _uid)
     if result:
         return {
             "avatar_id": avatar_id,
@@ -3290,7 +3294,8 @@ async def generate_all_portraits(current_user: dict = require_auth()):
                 }
             )
             continue
-        path = await asyncio.to_thread(_generate_portrait, avatar["id"])
+        _uid = current_user.get("user_id", "") if isinstance(current_user, dict) else ""
+        path = await asyncio.to_thread(_generate_portrait, avatar["id"], _uid)
         results.append(
             {
                 "avatar_id": avatar["id"],
@@ -4671,7 +4676,8 @@ async def regenerate_portraits(current_user: dict = require_auth()):
     ok, failed = [], []
     for avatar in AVATARS:
         try:
-            if await asyncio.to_thread(_generate_portrait, avatar["id"]):
+            _uid = current_user.get("user_id", "") if isinstance(current_user, dict) else ""
+            if await asyncio.to_thread(_generate_portrait, avatar["id"], _uid):
                 ok.append(avatar["id"])
             else:
                 failed.append(avatar["id"])

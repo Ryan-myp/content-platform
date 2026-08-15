@@ -465,10 +465,10 @@ async def get_style_preview(filename: str):
     return FileResponse(path, media_type="image/png")
 
 
-def _ai_bg(prompt: str) -> Image.Image:
+def _ai_bg(prompt: str, uid: str = "") -> Image.Image:
     """文生图生成表情包背景，失败抛异常。"""
     # 函数内取最新配置：config 表运行中修改后无需重启即时生效
-    from common.config import IMAGE_MODEL, require_model
+    from common.config import IMAGE_MODEL, require_model, resolve_feature_model
 
     if not resolve_api_key():
         raise HTTPException(400, "未配置中转站 API Key，AI 模式不可用（可先使用经典模板模式）")
@@ -476,7 +476,7 @@ def _ai_bg(prompt: str) -> Image.Image:
         f"{resolve_api_base()}/images/generations",
         headers={"Authorization": f"Bearer {resolve_api_key()}", "Content-Type": "application/json"},
         json={
-            "model": require_model(IMAGE_MODEL, "表情包"),
+            "model": require_model(resolve_feature_model(uid, "image", IMAGE_MODEL), "表情包"),
             "prompt": prompt,
             "size": "1024x1024",
             "n": 1,
@@ -623,7 +623,7 @@ async def _meme_render_bg(params: dict, _report) -> tuple:
         )
         if params["character"]:
             scene += f"，角色设定（全套必须完全一致）：{params['character']}；所有画面中的角色形象、服装、画风保持一致"
-        img = await asyncio.to_thread(_ai_bg, f"{full_prompt}。{scene}")
+        img = await asyncio.to_thread(_ai_bg, f"{full_prompt}。{scene}", payload.get("user_id") or "")
         overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
         od = ImageDraw.Draw(overlay)
         if params["top_text"]:
@@ -712,6 +712,7 @@ async def generate_meme(
         "ai_prompt": ai_prompt,
         "ai_style": ai_style,
         "bg_upload": bg_upload,
+        "user_id": uid,
         "decoration": decoration,
         "template_id": template_id,
     }

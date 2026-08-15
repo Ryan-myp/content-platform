@@ -104,8 +104,11 @@ async def add_relay_server(req: RelayServerCreate):
 
 
 @router.delete("/{relay_id}")
-async def delete_relay_server(relay_id: str):
+async def delete_relay_server(relay_id: str, provider: str = "", current_user: dict = require_auth()):
     """删除中转站。"""
+    # /me 是「用户自己的中转站 key」路由，须先于动态段匹配（避免被 {relay_id} 吞掉）
+    if relay_id == "me":
+        return await clear_my_relay(provider=provider, current_user=current_user)
     relays = _load_relays()
     remaining = [r for r in relays if r.get("id") != relay_id]
     if len(remaining) == len(relays):
@@ -212,30 +215,120 @@ class UserRelayRequest(BaseModel):
     # 注意：供应商 base 由平台写死（防用户指向其他服务商绕开计费），用户只能选供应商填 key
 
 
+def _load_user_relay_keys(uid: str) -> dict:
+    """读取用户各供应商 key 映射 {provider: api_key}。"""
+    from common.db import get_db
+
+    if not uid:
+        return {}
+    try:
+        conn = get_db()
+        try:
+            row = conn.execute("SELECT relay_keys, relay_api_key, relay_provider FROM users WHERE id=?", (uid,)).fetchone()
+        finally:
+            conn.close()
+        if not row:
+            return {}
+        keys = {}
+        try:
+            keys = json.loads(row["relay_keys"] or "{}") if row["relay_keys"] else {}
+            if not isinstance(keys, dict):
+                keys = {}
+        except Exception:
+            keys = {}
+        # 兼容旧数据：单列 relay_api_key 未迁移时补进 relay_keys
+        old_key = (row["relay_api_key"] or "").strip()
+        if old_key and not any(keys.values()):
+            keys[row["relay_provider"] or "aixinghuo"] = old_key
+        return {k: (v or "").strip() for k, v in keys.items() if k and v}
+    except Exception:
+        return {}
+
+
+def _save_user_relay_key(uid: str, provider: str, api_key: str, activate: bool = True) -> None:
+    """保存某供应商 key（不覆盖其他供应商）；activate=True 时同时设为当前激活供应商。"""
+    keys = _load_user_relay_keys(uid)
+    keys[provider] = api_key
+    with get_db_context() as conn:
+        conn.execute(
+            "UPDATE users SET relay_keys=?, relay_api_key=?, relay_provider=?, relay_api_base='' WHERE id=?",
+            (
+                json.dumps(keys, ensure_ascii=False),
+                api_key if activate else (keys.get(_active_provider(uid)) or ""),
+                provider if activate else _active_provider(uid),
+                uid,
+            ),
+        )
+
+
+def _active_provider(uid: str) -> str:
+    from common.db import get_db
+
+    try:
+        conn = get_db()
+        try:
+            row = conn.execute("SELECT relay_provider FROM users WHERE id=?", (uid,)).fetchone()
+        finally:
+            conn.close()
+        return (row["relay_provider"] or "aixinghuo") if row else "aixinghuo"
+    except Exception:
+        return "aixinghuo"
+
+
+def _save_provider_models(provider: str, model_list: list) -> None:
+    """模型列表按供应商分存（model_list:{provider}），并同步到当前 model_list。"""
+    import os
+
+    with get_db_context() as conn:
+        conn.execute(
+            "INSERT INTO config (key, value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=?",
+            (
+                f"model_list:{provider}",
+                json.dumps(model_list, ensure_ascii=False),
+                json.dumps(model_list, ensure_ascii=False),
+            ),
+        )
+        # 激活供应商时把该供应商模型设为当前生效列表
+        conn.execute(
+            "INSERT INTO config (key, value) VALUES ('model_list',?) ON CONFLICT(key) DO UPDATE SET value=?",
+            (
+                json.dumps(model_list, ensure_ascii=False),
+                json.dumps(model_list, ensure_ascii=False),
+            ),
+        )
+
+
 @router.get("/me")
 async def get_my_relay(current_user: dict = require_auth()):
-    """读取当前用户的中转站配置（key 脱敏）。"""
+    """读取当前用户的中转站配置（key 脱敏；各供应商独立状态）。"""
     uid = current_user.get("user_id", "")
-    relay = get_user_relay_config(uid)
+    keys = _load_user_relay_keys(uid)
     from common.config import AGNES_API_BASE as _DEFAULT_BASE, RELAY_PROVIDERS
 
-    provider = relay.get("provider") or "aixinghuo"
+    provider = _active_provider(uid)
     _base = RELAY_PROVIDERS.get(provider, _DEFAULT_BASE)
     _register = "https://aixinghuo.net/" if provider == "aixinghuo" else "https://apihub.agnes-ai.cn/"
     return {
-        "configured": bool(relay.get("api_key")),
-        "api_key_masked": _mask_key(relay["api_key"]) if relay.get("api_key") else "",
+        "configured": bool(keys.get(provider)),
+        "api_key_masked": _mask_key(keys.get(provider, "")) if keys.get(provider) else "",
         "api_base": _base,
         "default_base": _DEFAULT_BASE,
         "provider": provider,
         "providers": list(RELAY_PROVIDERS.keys()),
+        "providers_status": {
+            p: {
+                "configured": bool(keys.get(p)),
+                "api_key_masked": _mask_key(keys[p]) if keys.get(p) else "",
+            }
+            for p in RELAY_PROVIDERS
+        },
         "register_url": _register,
     }
 
 
 @router.put("/me")
 async def update_my_relay(req: UserRelayRequest, current_user: dict = require_auth()):
-    """保存用户中转站 key（先校验 key 有效，再拉取中转站模型列表并生效）。"""
+    """保存用户中转站 key（先校验 key 有效，再拉取该供应商模型列表；多供应商并存互不覆盖）。"""
     uid = current_user.get("user_id", "")
     if not uid:
         raise HTTPException(401, "请先登录")
@@ -253,7 +346,7 @@ async def update_my_relay(req: UserRelayRequest, current_user: dict = require_au
     if not ok:
         raise HTTPException(400, f"{provider} Key 校验失败：{err}（请确认 Key 正确且对应供应商）")
 
-    # 拉取该供应商的模型列表并保存（本地版模型不写死，全部来自用户选择的中转站）
+    # 拉取该供应商的模型列表并保存（按供应商分存，不污染另一供应商的模型）
     models_saved = 0
     try:
         async with httpx.AsyncClient(timeout=20) as client:
@@ -269,34 +362,61 @@ async def update_my_relay(req: UserRelayRequest, current_user: dict = require_au
                         {"name": m.get("id")} for m in raw if isinstance(m, dict) and m.get("id")
                     ]
                     if model_list:
-                        from common.db import get_db_context
-
-                        with get_db_context() as conn:
-                            conn.execute(
-                                "INSERT INTO config (key, value) VALUES ('model_list',?) "
-                                "ON CONFLICT(key) DO UPDATE SET value=?",
-                                (
-                                    json.dumps(model_list, ensure_ascii=False),
-                                    json.dumps(model_list, ensure_ascii=False),
-                                ),
-                            )
+                        _save_provider_models(provider, model_list)
                         models_saved = len(model_list)
     except Exception:
         pass
 
-    with get_db_context() as conn:
-        conn.execute(
-            "UPDATE users SET relay_api_key=?, relay_api_base='', relay_provider=? WHERE id=?",
-            (api_key, provider, uid),
-        )
+    # 保存 key：只更新该供应商的 key，同时设为当前激活供应商（旧供应商 key 保留）
+    _save_user_relay_key(uid, provider, api_key, activate=True)
     return {
         "success": True,
-        "message": f"{provider} Key 已保存，AI 功能将使用你的 Key 计费",
+        "message": f"{provider} Key 已保存并设为当前使用，AI 功能将使用你的 Key 计费",
         "api_key_masked": _mask_key(api_key),
         "api_base": _DEFAULT_BASE,
         "provider": provider,
         "models": models_saved,
         "model_hint": "模型列表已从中转站同步" if models_saved else "已保存 Key（模型列表同步失败，请重试或检查中转站）",
+    }
+
+
+@router.post("/me/activate")
+async def activate_my_relay(provider: str = Query(...), current_user: dict = require_auth()):
+    """切换当前使用的供应商（该供应商须已保存过 key；切换时同步该供应商模型列表）。"""
+    uid = current_user.get("user_id", "")
+    provider = (provider or "").strip().lower()
+    from common.config import RELAY_PROVIDERS
+
+    if provider not in RELAY_PROVIDERS:
+        raise HTTPException(400, "不支持的供应商，请选择 aixinghuo 或 agnes")
+    keys = _load_user_relay_keys(uid)
+    api_key = keys.get(provider, "")
+    if not api_key:
+        raise HTTPException(400, f"尚未保存 {provider} 的 Key，请先填写保存")
+
+    # 同步该供应商模型列表为当前生效
+    try:
+        from common.db import get_db
+
+        conn = get_db()
+        try:
+            row = conn.execute("SELECT value FROM config WHERE key=?", (f"model_list:{provider}",)).fetchone()
+        finally:
+            conn.close()
+        if row and row["value"]:
+            with get_db_context() as conn:
+                conn.execute(
+                    "INSERT INTO config (key, value) VALUES ('model_list',?) ON CONFLICT(key) DO UPDATE SET value=?",
+                    (row["value"], row["value"]),
+                )
+    except Exception:
+        pass
+
+    _save_user_relay_key(uid, provider, api_key, activate=True)
+    return {
+        "success": True,
+        "message": f"已切换到 {provider}，AI 功能将使用该供应商的 Key 计费",
+        "provider": provider,
     }
 
 
@@ -317,17 +437,34 @@ async def verify_user_relay_key(req: UserRelayRequest, current_user: dict = requ
     return {"success": True, "message": f"{provider} Key 有效，可以正常使用", "provider": provider}
 
 
-@router.delete("/me")
-async def clear_my_relay(current_user: dict = require_auth()):
-    """清除用户中转站配置（同时清空拉取到的模型列表，回到未配置状态）。"""
+async def clear_my_relay(provider: str = "", current_user: dict = require_auth()):
+    """清除用户中转站配置：默认清当前激活供应商的 key；全部清空时删除模型列表。
+
+    注意：路由由 DELETE /{relay_id} 转发（relay_id == 'me'），
+    因 /{relay_id} 注册更早会吞掉 /me，故不在本函数上直接挂路由。
+    """
     uid = current_user.get("user_id", "")
+    keys = _load_user_relay_keys(uid)
+    target = (provider or "").strip().lower() or _active_provider(uid)
+    if target in keys:
+        del keys[target]
     with get_db_context() as conn:
         conn.execute(
-            "UPDATE users SET relay_api_key='', relay_api_base='', relay_provider='aixinghuo' WHERE id=?",
-            (uid,),
+            "UPDATE users SET relay_keys=?, relay_api_key=?, relay_provider=? WHERE id=?",
+            (
+                json.dumps(keys, ensure_ascii=False),
+                keys.get(_active_provider(uid), "") if keys else "",
+                _active_provider(uid) if keys else "aixinghuo",
+                uid,
+            ),
         )
-        conn.execute("DELETE FROM config WHERE key='model_list'")
-    return {"success": True, "message": "已清除中转站配置与模型列表，请重新配置 Key 后使用 AI 功能"}
+        if not keys:
+            conn.execute("DELETE FROM config WHERE key='model_list'")
+            conn.execute("DELETE FROM config WHERE key LIKE 'model_list:%'")
+    return {
+        "success": True,
+        "message": f"已清除 {target} 的中转站配置" + ("与模型列表" if not keys else "") + "，可重新配置 Key 后使用 AI 功能",
+    }
 
 
 async def _verify_user_key(api_key: str, api_base: str) -> tuple:

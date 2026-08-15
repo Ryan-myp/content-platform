@@ -454,12 +454,13 @@ async def get_stats(current_user: dict = require_auth()):
 def _parse_video_params(payload: dict) -> dict:
     """解析视频生成参数：校验 prompt，按 8n+1 规则计算帧数（最大 441 帧）。"""
     # 函数内取最新配置：config 表运行中修改后无需重启即时生效
-    from common.config import VIDEO_MODEL, require_model
+    from common.config import VIDEO_MODEL, require_model, resolve_feature_model
 
     prompt = (payload.get("prompt") or "").strip()
     if not prompt:
         raise HTTPException(400, "请输入画面描述")
-    model = require_model(payload.get("model") or VIDEO_MODEL, "视频")
+    _uid = payload.get("user_id") or ""
+    model = require_model(payload.get("model") or resolve_feature_model(_uid, "video", VIDEO_MODEL), "视频")
     width = int(payload.get("width") or 1152)
     height = int(payload.get("height") or 768)
     duration = int(payload.get("duration") or 5)
@@ -809,6 +810,7 @@ async def create_video_task(
         "mode": mode,
         "image": img_url,
         "frame_rate": frame_rate,
+        "user_id": uid,
         "project_id": project_id,
     }
     if sync:

@@ -359,7 +359,7 @@ def _anchor_search(char: dict | None, search: str) -> str:
     return q
 
 
-def _generate_scene_image(shot: str, anchors: str = "", refs: list[bytes] | None = None) -> bytes | None:
+def _generate_scene_image(shot: str, anchors: str = "", refs: list[bytes] | None = None, uid: str = "") -> bytes | None:
     """AGNES 文生图/图生图镜头插画（v13.30 角色一致性）。
 
     参考图 refs（按出场角色顺序，每角色最近一张单人插画）非空 → 图生图/多图合成
@@ -375,7 +375,7 @@ def _generate_scene_image(shot: str, anchors: str = "", refs: list[bytes] | None
         import requests
         from PIL import Image
         # 函数内取最新配置：config 表运行中修改后无需重启即时生效
-        from common.config import IMAGE_MODEL, require_model
+        from common.config import IMAGE_MODEL, require_model, resolve_feature_model
         from common.llm import api_error_detail
 
         prompt = (
@@ -384,7 +384,7 @@ def _generate_scene_image(shot: str, anchors: str = "", refs: list[bytes] | None
             + shot
         )
         body = {
-            "model": require_model(IMAGE_MODEL, "图片"),
+            "model": require_model(resolve_feature_model(uid, "image", IMAGE_MODEL), "图片"),
             "prompt": prompt,
             "size": "1K",
             "ratio": "9:16",
@@ -420,14 +420,14 @@ def _generate_scene_image(shot: str, anchors: str = "", refs: list[bytes] | None
         return None
 
 
-def _make_scene_card(text: str, idx: int, total: int, title: str, path: str, shot: str = "") -> bool:
+def _make_scene_card(text: str, idx: int, total: int, title: str, path: str, shot: str = "", uid: str = "") -> bool:
     """PIL 生成镜头背景图：优先 AGNES 插画（shot 画面描述），失败回退渐变海报。
 
     v13.29 去"大字报"：渐变底不再印整段台词（字幕才是文字载体，避免画面=字幕），
     只保留剧名 + 镜头序号 + 短标题；插画失败静默回退，不阻塞主链路。
     """
     if shot:
-        data = _generate_scene_image(shot)
+        data = _generate_scene_image(shot, uid=uid)
         if data:
             try:
                 with open(path, "wb") as f:
@@ -944,7 +944,7 @@ async def _drama_render_one(
             if len(scene_chars) == 1:
                 char_refs[scene_chars[0]] = data
         else:
-            ok = await asyncio.to_thread(_make_scene_card, text, i, total, title, img_path)
+            ok = await asyncio.to_thread(_make_scene_card, text, i, total, title, img_path, uid=uid)
             if ok:
                 await asyncio.to_thread(_scene_video, img_path, audio_path, clip, dur, "still", fade_in, fade_out)
     return (clip if ok else None), audio_path, dh_off

@@ -165,10 +165,10 @@ def _agnes_avatar_submit(payload: dict) -> str:
     if (num_frames - 1) % 8 != 0:
         num_frames = ((num_frames - 1) // 8) * 8 + 1
 
-    from common.config import require_model
+    from common.config import require_model, resolve_feature_model
 
     body = {
-        "model": require_model(payload.get("model") or None, "视频"),
+        "model": require_model(payload.get("model") or resolve_feature_model(payload.get("user_id") or "", "video", ""), "视频"),
         "prompt": prompt,
         "width": width,
         "height": height,

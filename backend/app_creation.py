@@ -9,6 +9,7 @@
 
 import os
 import sys
+import json  # noqa: E402
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
@@ -54,6 +55,34 @@ async def lifespan(app: FastAPI):
             pass
         try:
             conn.execute("ALTER TABLE users ADD COLUMN relay_provider TEXT DEFAULT 'aixinghuo'")
+        except Exception:
+            pass
+        try:
+            # v1.0.30：多供应商 key 分存（relay_keys JSON：{"aixinghuo": "sk-..", "agnes": "sk-.."}）
+            conn.execute("ALTER TABLE users ADD COLUMN relay_keys TEXT DEFAULT '{}'")
+        except Exception:
+            pass
+        # 迁移旧数据：relay_api_key（旧单列）→ relay_keys[relay_provider]，避免升级后丢 key
+        try:
+            rows = conn.execute(
+                "SELECT id, relay_api_key, relay_provider, relay_keys FROM users"
+            ).fetchall()
+            for r in rows:
+                old_key = (r["relay_api_key"] or "").strip()
+                if not old_key:
+                    continue
+                provider = (r["relay_provider"] or "aixinghuo").strip()
+                try:
+                    keys = json.loads(r["relay_keys"] or "{}")
+                except Exception:
+                    keys = {}
+                if isinstance(keys, dict) and not keys.get(provider):
+                    keys[provider] = old_key
+                    conn.execute(
+                        "UPDATE users SET relay_keys=? WHERE id=?",
+                        (json.dumps(keys, ensure_ascii=False), r["id"]),
+                    )
+            conn.commit()
         except Exception:
             pass
         conn.commit()

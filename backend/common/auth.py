@@ -366,14 +366,28 @@ def get_user_relay_config(user_id: str) -> dict:
     conn = get_db()
     try:
         row = conn.execute(
-            "SELECT relay_api_key, relay_api_base, relay_provider FROM users WHERE id=?", (user_id,)
+            "SELECT relay_api_key, relay_api_base, relay_provider, relay_keys FROM users WHERE id=?",
+            (user_id,),
         ).fetchone()
         if not row:
             return {}
+        provider = (row["relay_provider"] or "aixinghuo").strip()
+        api_key = ""
+        # v1.0.30：优先按供应商从 relay_keys 读（多供应商 key 分存，互不覆盖）
+        try:
+            import json as _json
+
+            keys = _json.loads(row["relay_keys"] or "{}") if row["relay_keys"] else {}
+            if isinstance(keys, dict):
+                api_key = (keys.get(provider) or "").strip()
+        except Exception:
+            api_key = ""
+        if not api_key:
+            api_key = (row["relay_api_key"] or "").strip()
         return {
-            "api_key": (row["relay_api_key"] or "").strip(),
+            "api_key": api_key,
             "api_base": (row["relay_api_base"] or "").strip(),
-            "provider": (row["relay_provider"] or "aixinghuo").strip(),
+            "provider": provider,
         }
     finally:
         conn.close()
@@ -410,7 +424,10 @@ def get_user_profile(user_id: str) -> dict:
         "remaining_today": max(0, daily_quota + bonus - used_today),
         "total_usage": row.get("total_usage") or 0,
         "created_at": row.get("created_at"),
-        "relay_configured": bool(row.get("relay_api_key")),
+        "relay_configured": bool(
+            row.get("relay_api_key")
+            or (row.get("relay_keys") and row["relay_keys"].strip() not in ("", "{}"))
+        ),
     }
 
 
