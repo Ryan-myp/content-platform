@@ -42,6 +42,8 @@ import {
   LayoutGrid,
   Shuffle,
   AudioWaveform,
+  Sliders,
+  ChevronDown,
 } from 'lucide-react'
 import { Card, Button, Empty, PageHeader, Modal, Badge } from '../components/ui'
 import ShareButton from '../components/ShareButton'

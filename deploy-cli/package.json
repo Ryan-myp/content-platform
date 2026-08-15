@@ -1,6 +1,6 @@
 {
   "name": "@ryan-myp/content-platform",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "小团智能内容创作平台一键部署 — 本地免费、免注册登录，AI 费用走中转站 Key（npx 启动 FastAPI + React）",
   "type": "module",
   "bin": {

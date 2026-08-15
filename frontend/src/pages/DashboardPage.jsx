@@ -3,6 +3,8 @@ import {
   BarChart3,
   CheckCircle2,
   Languages,
+  Film,
+  Volume2,
   FileText,
   TrendingUp,
   Search,

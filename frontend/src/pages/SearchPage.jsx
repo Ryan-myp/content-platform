@@ -118,7 +118,7 @@ export default function SearchPage() {
           <div className="mt-3 flex flex-wrap gap-2">
             {[
               { key: 'all', label: t('common.all'), count: results.length },
-              { key: 'tool', label: t('search.tools'), icon: Tool },
+              { key: 'tool', label: t('search.tools'), icon: Wrench },
               { key: 'template', label: t('search.templates'), icon: FileText },
               { key: 'project', label: t('search.projects'), icon: Folder },
               { key: 'task', label: t('search.tasks'), icon: Tag },

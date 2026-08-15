@@ -42,6 +42,8 @@ import {
   FileSearch,
   Activity,
   BookOpen,
+  Database,
+  MessageSquare,
   Heart,
   HelpCircle,
   Crown,
