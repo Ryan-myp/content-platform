@@ -75,6 +75,7 @@ import {
   ChevronDown,
   Save,
   RefreshCw,
+  KeyRound,
 } from 'lucide-react'
 import { Card, Button, Badge, Modal } from '../components/ui'
 import { useToast } from '../lib/toast'
@@ -570,6 +571,7 @@ export default function HomePage() {
   const navigate = useNavigate()
   const toast = useToast()
   const [stats, setStats] = useState(null)
+  const [relayConfigured, setRelayConfigured] = useState(null) // null=未知
   const [recent, setRecent] = useState(null)
   // v16 最近使用：用户访问过的工具一键直达（localStorage 追踪）
   const { recent: recentTools, clear: clearRecentTools } = useRecentTools()
@@ -591,6 +593,10 @@ export default function HomePage() {
 
   useEffect(() => {
     loadData()
+    api
+      .get('/api/config')
+      .then((res) => setRelayConfigured(!!res.data.relay_configured))
+      .catch(() => setRelayConfigured(true)) // 失败不打扰
   }, [])
 
   const loadData = async () => {
@@ -797,6 +803,40 @@ export default function HomePage() {
 
   return (
     <div className="space-y-6">
+      {/* 未配置中转站 Key：引流横幅 */}
+      {relayConfigured === false && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4 rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 shadow-sm">
+          <div className="flex items-center gap-3">
+            <span className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+              <KeyRound className="w-5 h-5 text-amber-600" />
+            </span>
+            <div>
+              <div className="text-sm font-semibold text-amber-800">未配置中转站 API Key，AI 功能暂不可用</div>
+              <div className="text-xs text-amber-600 mt-0.5">
+                配置你的 Key 后即可使用图片/视频/配音/数字人等全部 AI 功能（按你的 Key 计费）
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <a
+              href="https://aixinghuo.net/"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors"
+            >
+              前往 aixinghuo.net 注册 ↗
+            </a>
+            <button
+              onClick={() => navigate('/profile')}
+              className="inline-flex items-center gap-1 px-4 py-2 rounded-xl bg-amber-500 text-white text-sm font-medium hover:bg-amber-600 transition-colors"
+            >
+              <KeyRound className="w-4 h-4" />
+              去配置 Key
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 欢迎区 */}
       <div className="bg-gradient-to-r from-brand-600 via-brand-500 to-indigo-500 rounded-2xl px-6 py-5 text-white shadow-lg relative overflow-hidden">
         <div className="absolute -right-8 -top-8 w-40 h-40 bg-white/10 rounded-full" />

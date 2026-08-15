@@ -21,6 +21,7 @@ export default function ProfilePage({ user }) {
   const [relayVerifying, setRelayVerifying] = useState(false)
   const [relayModels, setRelayModels] = useState(0)
   const [relayBase, setRelayBase] = useState('')
+  const [registerUrl, setRegisterUrl] = useState('https://aixinghuo.net/')
 
   const loadRelay = async () => {
     try {
@@ -28,6 +29,7 @@ export default function ProfilePage({ user }) {
       setRelayConfigured(res.data.configured)
       setRelayMasked(res.data.api_key_masked)
       setRelayBase(res.data.api_base || res.data.default_base)
+      if (res.data.register_url) setRegisterUrl(res.data.register_url)
     } catch {
       /* 静默 */
     }
@@ -136,6 +138,27 @@ export default function ProfilePage({ user }) {
               填写本站签发的中转站 Key 后，AI 功能（图片/视频/配音/数字人/工具）将使用你的 Key
               计费，并从你的中转站拉取模型列表（各创作页可自由切换模型）。中转站地址由平台固定，不可更改。
             </p>
+
+            {!relayConfigured && (
+              <a
+                href={registerUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 hover:border-indigo-300 transition-colors group"
+              >
+                <div>
+                  <div className="text-sm font-medium text-indigo-700 flex items-center gap-1.5">
+                    还没有中转站 Key？
+                  </div>
+                  <div className="text-xs text-ink-400 mt-0.5">
+                    前往爱星火 aixinghuo.net 注册账号，在个人中心创建 API Key（sk- 开头）后回来填入即可使用全部 AI 功能
+                  </div>
+                </div>
+                <span className="inline-flex items-center gap-1 shrink-0 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-medium group-hover:bg-indigo-700 transition-colors">
+                  前往注册领取 Key ↗
+                </span>
+              </a>
+            )}
 
             {relayConfigured && (
               <div className="mb-3 p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">

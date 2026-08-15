@@ -96,16 +96,28 @@ export default function ModelSwitcher() {
                     ? '模型列表为空，请稍后重试或重新保存 Key'
                     : '未配置中转站 Key，无法使用 AI 功能'}
                 </p>
-                <button
-                  onClick={() => {
-                    setOpen(false)
-                    navigate('/profile')
-                  }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 text-white text-xs font-medium hover:bg-amber-600 transition-colors"
-                >
-                  <KeyRound className="w-3.5 h-3.5" />
-                  去配置中转站 Key
-                </button>
+                <div className="flex items-center justify-center gap-2">
+                  {!relayConfigured && (
+                    <a
+                      href="https://aixinghuo.net/"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-700 transition-colors"
+                    >
+                      去 aixinghuo.net 注册
+                    </a>
+                  )}
+                  <button
+                    onClick={() => {
+                      setOpen(false)
+                      navigate('/profile')
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 text-white text-xs font-medium hover:bg-amber-600 transition-colors"
+                  >
+                    <KeyRound className="w-3.5 h-3.5" />
+                    去配置 Key
+                  </button>
+                </div>
               </div>
             ) : (
               modelOptions.map((m) => (

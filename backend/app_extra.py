@@ -138,6 +138,7 @@ async def get_config(current_user: dict = require_auth()):
         "model_name": prefs.get("default") or (models[0]["name"] if models else ""),
         "models": models,
         "relay_configured": relay_configured,
+        "register_url": "https://aixinghuo.net/",
         "image_model": prefs.get("image") or "",
         "video_model": prefs.get("video") or "",
         "audio_model": prefs.get("audio") or "",

@@ -223,6 +223,7 @@ async def get_my_relay(current_user: dict = require_auth()):
         "api_key_masked": _mask_key(relay["api_key"]) if relay.get("api_key") else "",
         "api_base": relay.get("api_base") or _DEFAULT_BASE,
         "default_base": _DEFAULT_BASE,
+        "register_url": "https://aixinghuo.net/",
     }
 
 
