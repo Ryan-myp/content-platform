@@ -1128,6 +1128,13 @@ async def get_current_user(
     try:
         relay = get_user_relay_config(user_id)
         if relay.get("api_key"):
+            # 同时携带用户选择的「默认模型」（侧边栏全局模型切换，ModelSwitcher 保存到 model_prefs）
+            try:
+                from common.config import resolve_feature_model
+
+                relay["default_model"] = resolve_feature_model(user_id, "default", "")
+            except Exception:
+                pass
             from common.relay_context import set_relay_context
 
             set_relay_context(relay)

@@ -224,11 +224,13 @@ def get_model_config(model_name: str | None = None) -> dict:
     user_key = (user_relay or {}).get("api_key") or ""
 
     # 未指定模型名（文案/工具等 LLM 功能前端不传 model）：
-    # 自动取用户中转站模型列表第一个；无列表则明确报错（本地版不写死任何模型）
+    # 优先用用户选择的「默认模型」（全局模型切换），其次取中转站模型列表第一个；无则明确报错
     if not name:
-        _models = get_model_list()
-        if _models:
-            name = (_models[0].get("name") or "").strip()
+        name = ((user_relay or {}).get("default_model") or "").strip()
+        if not name:
+            _models = get_model_list()
+            if _models:
+                name = (_models[0].get("name") or "").strip()
         if not name:
             from fastapi import HTTPException
 

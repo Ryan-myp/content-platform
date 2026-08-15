@@ -278,6 +278,21 @@ def _patch_config_relay_models() -> int:
     for m in get_model_list():'''
         if anchor in src:
             src = src.replace(anchor, inject, 1)
+    # get_model_config 空模型名：优先用户默认模型偏好，其次列表第一个
+    if '用户选择的「默认模型」' not in src:
+        old_t = '''        _models = get_model_list()
+        if _models:
+            name = (_models[0].get("name") or "").strip()
+        if not name:'''
+        new_t = '''        name = ((user_relay or {}).get("default_model") or "").strip()
+        if not name:
+            _models = get_model_list()
+            if _models:
+                name = (_models[0].get("name") or "").strip()
+        if not name:'''
+        if old_t in src:
+            src = src.replace(old_t, new_t, 1)
+            n += 1
     # require_model 助手（工厂在未选择模型时给出清晰报错）
     if 'def require_model(' not in src:
         helper = '''
@@ -352,6 +367,24 @@ def _patch_auth_relay_quota() -> int:
         new = '        "created_at": row.get("created_at"),\n        "relay_configured": bool(row.get("relay_api_key")),\n    }'
         if old in src:
             src = src.replace(old, new, 1)
+            n += 1
+    # 4. get_current_user 注入 default_model（全局模型切换生效的关键）
+    if 'relay["default_model"] = resolve_feature_model' not in src:
+        old_t = '''            from common.relay_context import set_relay_context
+
+            set_relay_context(relay)'''
+        new_t = '''            # 同时携带用户选择的「默认模型」（侧边栏全局模型切换）
+            try:
+                from common.config import resolve_feature_model
+
+                relay["default_model"] = resolve_feature_model(user_id, "default", "")
+            except Exception:
+                pass
+            from common.relay_context import set_relay_context
+
+            set_relay_context(relay)'''
+        if old_t in src:
+            src = src.replace(old_t, new_t, 1)
             n += 1
     if n:
         open(path, 'w', encoding='utf-8').write(src)
@@ -772,6 +805,23 @@ def _patch_task_queue_relay() -> int:
             if '_last_master_err = 0.0' not in src:
                 src = src.replace('def _master_loop() -> None:', '_last_master_err = 0.0\n\n\ndef _master_loop() -> None:', 1)
     if '后台任务恢复用户的中转站 key' in src:
+        if 'resolve_feature_model(_uid, "default", "")' not in src:
+            old_t = '''        _relay = get_user_relay_config(_uid) if _uid else None
+        set_relay_context(_relay if _relay and _relay.get("api_key") else None)'''
+            new_t = '''        _relay = get_user_relay_config(_uid) if _uid else None
+        if _relay and _relay.get("api_key"):
+            try:
+                from common.config import resolve_feature_model
+
+                _relay["default_model"] = resolve_feature_model(_uid, "default", "")
+            except Exception:
+                pass
+            set_relay_context(_relay)
+        else:
+            set_relay_context(None)'''
+            if old_t in src:
+                src = src.replace(old_t, new_t, 1)
+                n += 1
         if n:
             open(path, 'w', encoding='utf-8').write(src)
         return n
