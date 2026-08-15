@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Node
+node_modules/
+deploy-cli/node_modules/
+deploy-cli/*.tgz
+deploy-cli/package-lock.json
+
+# 运行时产物（数据库/上传/生成文件）
+*.db
+*.db-*
+backend/uploads/
+backend/*_factory/
+backend/digital_human/
+backend/artifacts/
+backend/backups/
+backend/logs/
+backend/.optimizer_reports/
+backend/.keyframes/
+backend/previews/
+backend/skills_files/
+backend/cache/
+
+# 环境变量（含中转站 key，严禁上传）
+.env
+*.env
+.env.local
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
