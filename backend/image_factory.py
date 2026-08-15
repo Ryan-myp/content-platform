@@ -540,10 +540,11 @@ async def _image_t2i_worker(payload: dict, progress: Callable | None = None) -> 
     def _report(pct: float, stage: str) -> None:
         _notify_progress(progress, pct, stage)
 
-    from common.config import require_model
+    from common.config import require_model, resolve_feature_model
     prompt = payload.get("prompt") or ""
     size = payload.get("size") or DEFAULT_IMAGE_SIZE
-    model = require_model(payload.get("model") or IMAGE_MODEL, "图片")
+    _uid = payload.get("user_id") or ""
+    model = require_model(payload.get("model") or resolve_feature_model(_uid, "image", IMAGE_MODEL), "图片")
     batch_size, n = normalize_batch_params(payload.get("batch_size"), payload.get("n"))
     project_id = payload.get("project_id") or ""
     negative = payload.get("negative") or ""
@@ -649,6 +650,7 @@ async def text_to_image(
         "n": n,
         "project_id": project_id,
         "negative": negative,
+        "user_id": uid,
     }
     if sync:
         return await _image_t2i_worker(payload)
@@ -700,7 +702,7 @@ def _pick_strength_by_preserve(strength: float, preserve: list | None) -> float:
 async def _image_i2i_worker(payload: dict, progress: Callable | None = None) -> dict:  # noqa: C901
     """图生图（同步/异步任务共用执行体，异步时回报进度）。"""
     # 函数内取最新配置：config 表运行中修改后无需重启即时生效
-    from common.config import IMAGE_MODEL, require_model
+    from common.config import IMAGE_MODEL, require_model, resolve_feature_model
 
     if not resolve_api_key():
         raise HTTPException(400, "未配置中转站 API Key")
@@ -711,7 +713,8 @@ async def _image_i2i_worker(payload: dict, progress: Callable | None = None) -> 
     prompt = payload.get("prompt") or ""
     size = payload.get("size") or "1024x1024"
     strength = float(payload.get("strength") or 0.35)
-    model = require_model(payload.get("model") or IMAGE_MODEL, "图片")
+    _uid = payload.get("user_id") or ""
+    model = require_model(payload.get("model") or resolve_feature_model(_uid, "image", IMAGE_MODEL), "图片")
     project_id = payload.get("project_id") or ""
     negative = payload.get("negative") or ""
     # 保留内容：person/pose/background/composition（可多选），空=自由发挥
@@ -809,7 +812,7 @@ async def image_to_image(
     user = current_user.get("username", "") if isinstance(current_user, dict) else ""
     uid = current_user.get("user_id", "") if isinstance(current_user, dict) else ""
     role = current_user.get("role", "") if isinstance(current_user, dict) else ""
-    payload = {"prompt": prompt, "size": size, "strength": strength, "model": model, "project_id": project_id, "negative": negative, "keep_person": keep_person, "preserve": preserve}
+    payload = {"prompt": prompt, "size": size, "strength": strength, "model": model, "project_id": project_id, "negative": negative, "keep_person": keep_person, "preserve": preserve, "user_id": uid}
     face_content = await face_ref.read() if face_ref else b""
     if face_content:
         payload["face_ref"] = base64.b64encode(face_content).decode()

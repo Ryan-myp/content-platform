@@ -1357,6 +1357,7 @@ export default function ImageFactoryPage() {
     form.append('image', img2imgFile)
     form.append('size', img2imgSize)
     form.append('strength', img2imgStrength)
+    if (selectedModel) form.append('model', selectedModel)
     if (img2imgPreserve.length > 0) form.append('preserve', img2imgPreserve.join(','))
     if (negativePrompt.trim()) form.append('negative', negativePrompt.trim())
     await submitTask('/api/image-factory/generate/image-to-image', form, {
