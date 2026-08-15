@@ -115,6 +115,7 @@ export default function ShortDramaPage() {
   const [showCustom, setShowCustom] = useState(false)
   const [scriptData, setScriptData] = useState(null) // v13.29 AI 剧本工作台：{title, scenes[]}
   // 红果短剧升级：小说导入 + 系列连载 + 角色圣经
+  const [artStyle, setArtStyle] = useState('guoman') // 漫剧画风：guoman/hanman/3d/realistic
   const [novelText, setNovelText] = useState('')
   const [novelBusy, setNovelBusy] = useState(false)
   const [series, setSeries] = useState([])
@@ -226,6 +227,7 @@ export default function ShortDramaPage() {
     if (mode === 'illust') {
       // v13.30 AI 插画模式：每镜文生图/图生图，角色参考图锚定同人
       form.append('illust_mode', 'true')
+      form.append('art_style', artStyle)
     } else if (mode === 'avatar') {
       form.append('avatar_mode', 'true')
       form.append('avatar_id', avatarId)
@@ -753,6 +755,33 @@ export default function ShortDramaPage() {
                 <p className="mt-1 text-xs text-gray-500">真人形象口播每镜画面，耗时较长，失败自动回退素材模式</p>
               </button>
             </div>
+            {mode === 'illust' && (
+              <div className="mt-3 rounded-xl border border-violet-100 bg-violet-50/50 p-3">
+                <label className="block text-xs font-medium text-violet-700 mb-2">画风（全剧统一）</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    ['guoman', '国漫', '精致线条·高饱和'],
+                    ['hanman', '韩漫', '时尚精美·柔和光影'],
+                    ['3d', '3D 动画', '皮克斯渲染·立体'],
+                    ['realistic', '写实电影', '真人质感·真实光影'],
+                  ].map(([id, label, desc]) => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => setArtStyle(id)}
+                      className={`px-2.5 py-1.5 rounded-lg border text-xs transition-all ${
+                        artStyle === id
+                          ? 'border-violet-500 bg-white text-violet-700 font-medium shadow-soft'
+                          : 'border-violet-200 bg-white/60 text-violet-500 hover:border-violet-400'
+                      }`}
+                    >
+                      {label}
+                      <span className="block text-[10px] font-normal text-violet-400">{desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             {srcCfg && (
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 {srcCfg.pexels_configured ? (
