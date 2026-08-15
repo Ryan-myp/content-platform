@@ -366,13 +366,14 @@ def get_user_relay_config(user_id: str) -> dict:
     conn = get_db()
     try:
         row = conn.execute(
-            "SELECT relay_api_key, relay_api_base FROM users WHERE id=?", (user_id,)
+            "SELECT relay_api_key, relay_api_base, relay_provider FROM users WHERE id=?", (user_id,)
         ).fetchone()
         if not row:
             return {}
         return {
             "api_key": (row["relay_api_key"] or "").strip(),
             "api_base": (row["relay_api_base"] or "").strip(),
+            "provider": (row["relay_provider"] or "aixinghuo").strip(),
         }
     finally:
         conn.close()
@@ -1128,11 +1129,13 @@ async def get_current_user(
     try:
         relay = get_user_relay_config(user_id)
         if relay.get("api_key"):
-            # 同时携带用户选择的「默认模型」（侧边栏全局模型切换，ModelSwitcher 保存到 model_prefs）
+            # 同时携带用户选择的「默认模型」+ 按供应商解析的 api_base
             try:
-                from common.config import resolve_feature_model
+                from common.config import RELAY_PROVIDERS, resolve_feature_model
 
                 relay["default_model"] = resolve_feature_model(user_id, "default", "")
+                provider = (relay.get("provider") or "aixinghuo").lower()
+                relay["api_base"] = RELAY_PROVIDERS.get(provider, relay.get("api_base") or "")
             except Exception:
                 pass
             from common.relay_context import set_relay_context

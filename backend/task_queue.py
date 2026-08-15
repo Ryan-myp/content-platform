@@ -472,11 +472,13 @@ def _run_handler(task_id: str) -> None:
         _uid = row["user_id"] or ""
         _relay = get_user_relay_config(_uid) if _uid else None
         if _relay and _relay.get("api_key"):
-            # 携带用户默认模型偏好（与请求上下文一致，后台任务同样按用户默认模型）
+            # 携带用户默认模型偏好 + 按供应商解析的 api_base（与请求上下文一致）
             try:
-                from common.config import resolve_feature_model
+                from common.config import RELAY_PROVIDERS, resolve_feature_model
 
                 _relay["default_model"] = resolve_feature_model(_uid, "default", "")
+                _provider = (_relay.get("provider") or "aixinghuo").lower()
+                _relay["api_base"] = RELAY_PROVIDERS.get(_provider, _relay.get("api_base") or "")
             except Exception:
                 pass
             set_relay_context(_relay)

@@ -52,7 +52,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from common.artifacts import save_artifact
 from common.helpers import _notify_progress
 from common.auth import require_auth
-from common.config import load_config, resolve_api_key
+from common.config import load_config, resolve_api_key, resolve_api_base
 from common.llm import api_error_detail, _safe_exc_msg
 from content_safety import check_text, quality_report
 from publish_kit import build_publish_zip, license_text, pack_dir_name, platform_spec_text, publish_registry
@@ -525,7 +525,7 @@ v20 内容丰富度要求（必须全部满足）：
     try:
         response = await asyncio.to_thread(
             requests.post,
-            f"{AGNES_API_BASE}/chat/completions",
+            f"{resolve_api_base()}/chat/completions",
             headers={"Authorization": f"Bearer {resolve_api_key()}", "Content-Type": "application/json"},
             json={
                 "model": MODEL_NAME,
@@ -1912,7 +1912,7 @@ async def _music_sing_worker(payload: dict, progress: Callable | None = None) ->
     try:
         response = await asyncio.to_thread(
             requests.post,
-            f"{AGNES_API_BASE}/audio/speech",
+            f"{resolve_api_base()}/audio/speech",
             headers={"Authorization": f"Bearer {resolve_api_key()}", "Content-Type": "application/json"},
             json={"model": "tts-1", "input": text, "voice": tts_voice, "speed": 1.0},
             timeout=60,

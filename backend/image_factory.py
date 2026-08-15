@@ -56,7 +56,7 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
 
 from common.artifacts import derive_title, save_artifact
 from common.auth import require_auth
-from common.config import load_config, resolve_api_key
+from common.config import load_config, resolve_api_key, resolve_api_base
 from common.llm import api_error_detail, _safe_exc_msg
 from content_safety import check_text, quality_check_image, quality_report
 from publish_kit import build_publish_zip, license_text, pack_dir_name, platform_spec_text, publish_registry
@@ -555,7 +555,7 @@ async def _image_t2i_worker(payload: dict, progress: Callable | None = None) -> 
     if not res["ok"]:
         raise HTTPException(400, "操作失败，请稍后重试")
 
-    url = f"{AGNES_API_BASE}/images/generations"
+    url = f"{resolve_api_base()}/images/generations"
     headers = {"Authorization": f"Bearer {resolve_api_key()}", "Content-Type": "application/json"}
 
     size_str = normalize_size(size)
@@ -730,7 +730,7 @@ async def _image_i2i_worker(payload: dict, progress: Callable | None = None) -> 
     api_prompt = _build_preserve_prompt(prompt, preserve)
     api_strength = _pick_strength_by_preserve(strength, preserve)
 
-    url = f"{AGNES_API_BASE}/images/generations"
+    url = f"{resolve_api_base()}/images/generations"
     # 中转站 images/generations 仅支持 JSON body：图片以 base64 Data URI 传入（与短剧插画一致）
     headers = {"Authorization": f"Bearer {resolve_api_key()}", "Content-Type": "application/json"}
     body = {
@@ -2067,7 +2067,7 @@ async def _image_tryon_worker(payload: dict, progress: Callable | None = None) -
             }
             analyze_resp = await asyncio.to_thread(
                 requests.post,
-                f"{AGNES_API_BASE}/chat/completions",
+                f"{resolve_api_base()}/chat/completions",
                 headers={"Authorization": f"Bearer {resolve_api_key()}", "Content-Type": "application/json"},
                 json=analyze_payload,
                 timeout=60,
@@ -2225,7 +2225,7 @@ async def _image_tryon_worker(payload: dict, progress: Callable | None = None) -
         # 无背景模式：不加 image 锚定（实测会裁剪人脸），仅靠提示词尽力保留原场景
         response = await asyncio.to_thread(
             requests.post,
-            f"{AGNES_API_BASE}/images/generations",
+            f"{resolve_api_base()}/images/generations",
             headers={"Authorization": f"Bearer {resolve_api_key()}", "Content-Type": "application/json"},
             json=tryon_request,
             timeout=120,
@@ -2332,7 +2332,7 @@ def _turntable_prompt(base_prompt: str = "") -> str:
 
 async def _image_turntable_worker(payload: dict, progress: Callable | None = None) -> dict:  # noqa: C901
     """3D 转盘视频：基于图片生成人物原地 360° 旋转视频（图生视频 ti2vid）。"""
-    from common.config import AGNES_API_BASE as _BASE
+    from common.config import resolve_api_base as _BASE
 
     def _report(pct: float, stage: str) -> None:
         _notify_progress(progress, pct, stage)
@@ -2368,7 +2368,7 @@ async def _image_turntable_worker(payload: dict, progress: Callable | None = Non
     try:
         resp = await asyncio.to_thread(
             requests.post,
-            f"{_BASE}/videos",
+            f"{_BASE()}/videos",
             headers={"Authorization": f"Bearer {resolve_api_key()}", "Content-Type": "application/json"},
             json=body,
             timeout=60,
@@ -2388,7 +2388,7 @@ async def _image_turntable_worker(payload: dict, progress: Callable | None = Non
             try:
                 q = await asyncio.to_thread(
                     requests.get,
-                    f"{_BASE}/agnesapi",
+                    f"{_BASE()}/agnesapi",
                     params={"video_id": vid},
                     headers={"Authorization": f"Bearer {resolve_api_key()}"},
                     timeout=30,
@@ -2501,7 +2501,7 @@ async def replace_background(
             try:
                 bg_resp = await asyncio.to_thread(
                     requests.post,
-                    f"{AGNES_API_BASE}/images/generations",
+                    f"{resolve_api_base()}/images/generations",
                     headers={"Authorization": f"Bearer {resolve_api_key()}", "Content-Type": "application/json"},
                     json={
                         "model": require_model(IMAGE_MODEL, "图片"),

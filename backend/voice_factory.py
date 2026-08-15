@@ -51,7 +51,7 @@ from pydantic import BaseModel, Field
 
 from common.artifacts import save_artifact
 from common.auth import require_auth
-from common.config import load_config, resolve_api_key
+from common.config import load_config, resolve_api_key, resolve_api_base
 from common.llm import _safe_exc_msg
 from task_queue import create_task, register_handler
 
@@ -288,7 +288,7 @@ def _tts_one(text: str, voice: str, speed: float, pitch: int = 0, emotion: str =
         raise HTTPException(500, "TTS 通道不可用（edge-tts 与中转站均失败），请稍后重试")
     try:
         resp = requests.post(
-            f"{AGNES_API_BASE}/audio/speech",
+            f"{resolve_api_base()}/audio/speech",
             headers={"Authorization": f"Bearer {resolve_api_key()}", "Content-Type": "application/json"},
             json={"model": model, "input": text, "voice": voice, "speed": speed},
             timeout=_TTS_RELAY_TIMEOUT,

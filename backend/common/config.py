@@ -194,12 +194,31 @@ def resolve_api_key() -> str:
     return AGNES_API_KEY
 
 
-def resolve_api_base() -> str:
-    """解析当前请求应使用的中转站 Base URL。
+# 支持的供应商（模式 B：用户选择中转站，各自 base 平台写死，防绕开计费）
+RELAY_PROVIDERS = {
+    "aixinghuo": "https://aixinghuo.net/v1",        # 爱星火中转站（默认）
+    "agnes": "https://apihub.agnes-ai.com/v1",      # AGNES 官方 API
+}
 
-    注意：中转站 URL 平台写死（防用户指向其他服务商绕开计费），
-    用户配置的 base 一律忽略，始终返回平台 AGNES_API_BASE。
+
+def resolve_api_base() -> str:
+    """解析当前请求应使用的中转站 Base URL（按用户选择的供应商）。
+
+    供应商 base 由平台写死（防用户指向其他服务商绕开计费）；
+    请求上下文注入用户供应商对应的 base，未配置时回退默认（aixinghuo）。
     """
+    try:
+        from common.relay_context import get_relay_context
+
+        ctx = get_relay_context()
+        base = (ctx or {}).get("api_base") or ""
+        if base:
+            return base
+        provider = (ctx or {}).get("provider") or ""
+        if provider in RELAY_PROVIDERS:
+            return RELAY_PROVIDERS[provider]
+    except Exception:
+        pass
     return AGNES_API_BASE
 
 
@@ -245,15 +264,15 @@ def get_model_config(model_name: str | None = None) -> dict:
             key = (m.get("api_key") or "").strip()
             # 用户 key 优先；中转站 URL 平台写死（一律 AGNES_API_BASE，防绕开计费）
             if user_key:
-                return {"model": name, "api_key": user_key, "api_base": AGNES_API_BASE}
+                return {"model": name, "api_key": user_key, "api_base": resolve_api_base()}
             return {
                 "model": name,
                 "api_key": key or AGNES_API_KEY,
                 "api_base": base or AGNES_API_BASE,
             }
     if user_key:
-        return {"model": name, "api_key": user_key, "api_base": AGNES_API_BASE}
-    return {"model": name, "api_key": AGNES_API_KEY, "api_base": AGNES_API_BASE}
+        return {"model": name, "api_key": user_key, "api_base": resolve_api_base()}
+    return {"model": name, "api_key": AGNES_API_KEY, "api_base": resolve_api_base()}
 
 def resolve_feature_model(uid: str, feature: str, fallback: str = "") -> str:
     """读取用户按功能选择的模型偏好（model_prefs:{uid} {feature}），未选择用 fallback。"""

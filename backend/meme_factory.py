@@ -38,7 +38,7 @@ from pydantic import BaseModel, Field
 from common.artifacts import save_artifact
 from common.helpers import _notify_progress
 from common.auth import require_auth
-from common.config import load_config, resolve_api_key
+from common.config import load_config, resolve_api_key, resolve_api_base
 from common.llm import _safe_exc_msg
 from content_safety import check_text, quality_check_image, quality_report
 from publish_kit import build_publish_zip, license_text, pack_dir_name, platform_spec_text, publish_registry
@@ -473,7 +473,7 @@ def _ai_bg(prompt: str) -> Image.Image:
     if not resolve_api_key():
         raise HTTPException(400, "未配置中转站 API Key，AI 模式不可用（可先使用经典模板模式）")
     resp = requests.post(
-        f"{AGNES_API_BASE}/images/generations",
+        f"{resolve_api_base()}/images/generations",
         headers={"Authorization": f"Bearer {resolve_api_key()}", "Content-Type": "application/json"},
         json={
             "model": require_model(IMAGE_MODEL, "表情包"),

@@ -868,6 +868,279 @@ def _patch_task_queue_relay() -> int:
     return 1
 
 
+def _patch_provider_support() -> int:
+    """多供应商（aixinghuo/agnes）支持：用户可选供应商填 Key，base 按供应商写死。
+
+    同步覆盖后重新接入：
+    - config.py：RELAY_PROVIDERS + resolve_api_base 上下文感知 + get_model_config 用 resolve_api_base
+    - auth.py：get_user_relay_config 返回 provider + get_current_user 注入按供应商 base
+    - relay_api.py：请求/me/verify/delete 支持 provider
+    - app_creation.py：users.relay_provider 列
+    - task_queue.py：worker 上下文按供应商 base
+    - 8 个工厂：URL 构造 AGNES_API_BASE → resolve_api_base()
+    """
+    import re as _re
+
+    n = 0
+    B = os.path.join(CP_BACKEND, '')
+
+    # 1. config.py
+    p = os.path.join(B, 'common', 'config.py')
+    if os.path.exists(p):
+        s = open(p, encoding='utf-8').read()
+        if 'RELAY_PROVIDERS' not in s:
+            old_t = '''def resolve_api_base() -> str:
+    """解析当前请求应使用的中转站 Base URL。
+
+    注意：中转站 URL 平台写死（防用户指向其他服务商绕开计费），
+    用户配置的 base 一律忽略，始终返回平台 AGNES_API_BASE。
+    """
+    return AGNES_API_BASE'''
+            new_t = '''# 支持的供应商（模式 B：用户选择中转站，各自 base 平台写死，防绕开计费）
+RELAY_PROVIDERS = {
+    "aixinghuo": "https://aixinghuo.net/v1",        # 爱星火中转站（默认）
+    "agnes": "https://apihub.agnes-ai.com/v1",      # AGNES 官方 API
+}
+
+
+def resolve_api_base() -> str:
+    """解析当前请求应使用的中转站 Base URL（按用户选择的供应商）。"""
+    try:
+        from common.relay_context import get_relay_context
+
+        ctx = get_relay_context()
+        base = (ctx or {}).get("api_base") or ""
+        if base:
+            return base
+        provider = (ctx or {}).get("provider") or ""
+        if provider in RELAY_PROVIDERS:
+            return RELAY_PROVIDERS[provider]
+    except Exception:
+        pass
+    return AGNES_API_BASE'''
+            if old_t in s:
+                s = s.replace(old_t, new_t, 1)
+                n += 1
+        s = s.replace('"api_base": AGNES_API_BASE', '"api_base": resolve_api_base()')
+        s = s.replace("'api_base': AGNES_API_BASE", "'api_base': resolve_api_base()")
+        open(p, 'w', encoding='utf-8').write(s)
+
+    # 2. auth.py
+    p = os.path.join(B, 'common', 'auth.py')
+    if os.path.exists(p):
+        s = open(p, encoding='utf-8').read()
+        if '"provider": (row["relay_provider"]' not in s:
+            old_t = '"SELECT relay_api_key, relay_api_base FROM users WHERE id=?", (user_id,)'
+            new_t = '"SELECT relay_api_key, relay_api_base, relay_provider FROM users WHERE id=?", (user_id,)'
+            if old_t in s:
+                s = s.replace(old_t, new_t, 1)
+                n += 1
+            old_t = '''        return {
+            "api_key": (row["relay_api_key"] or "").strip(),
+            "api_base": (row["relay_api_base"] or "").strip(),
+        }'''
+            new_t = '''        return {
+            "api_key": (row["relay_api_key"] or "").strip(),
+            "api_base": (row["relay_api_base"] or "").strip(),
+            "provider": (row["relay_provider"] or "aixinghuo").strip(),
+        }'''
+            if old_t in s:
+                s = s.replace(old_t, new_t, 1)
+                n += 1
+        if 'relay["api_base"] = RELAY_PROVIDERS.get(provider' not in s:
+            old_t = '''            # 同时携带用户选择的「默认模型」（侧边栏全局模型切换，ModelSwitcher 保存到 model_prefs）
+            try:
+                from common.config import resolve_feature_model
+
+                relay["default_model"] = resolve_feature_model(user_id, "default", "")
+            except Exception:
+                pass'''
+            new_t = '''            # 同时携带用户选择的「默认模型」+ 按供应商解析的 api_base
+            try:
+                from common.config import RELAY_PROVIDERS, resolve_feature_model
+
+                relay["default_model"] = resolve_feature_model(user_id, "default", "")
+                provider = (relay.get("provider") or "aixinghuo").lower()
+                relay["api_base"] = RELAY_PROVIDERS.get(provider, relay.get("api_base") or "")
+            except Exception:
+                pass'''
+            if old_t in s:
+                s = s.replace(old_t, new_t, 1)
+                n += 1
+        open(p, 'w', encoding='utf-8').write(s)
+
+    # 3. relay_api.py
+    p = os.path.join(B, 'relay_api.py')
+    if os.path.exists(p):
+        s = open(p, encoding='utf-8').read()
+        if 'provider: str = Field("aixinghuo"' not in s:
+            old_t = '''    api_key: str = Field(..., min_length=8, max_length=200, description="中转站 API Key")
+    # 注意：中转站 URL 由平台写死（防用户指向其他服务商），用户只能填 key'''
+            new_t = '''    api_key: str = Field(..., min_length=8, max_length=200, description="API Key")
+    provider: str = Field("aixinghuo", description="供应商：aixinghuo(爱星火中转站) / agnes(AGNES官方)")
+    # 注意：供应商 base 由平台写死（防用户指向其他服务商绕开计费），用户只能选供应商填 key'''
+            if old_t in s:
+                s = s.replace(old_t, new_t, 1)
+                n += 1
+        if 'RELAY_PROVIDERS[provider]' not in s:
+            # PUT/verify 中的 base 解析
+            old_t = '''    api_key = req.api_key.strip()
+    # 中转站 URL 平台写死（防用户指向其他服务商绕开计费）
+    from common.config import AGNES_API_BASE as _DEFAULT_BASE
+
+    ok, err = await _verify_user_key(api_key, _DEFAULT_BASE)
+    if not ok:
+        raise HTTPException(400, f"中转站 Key 校验失败：{err}（请确认是本站签发的 Key）")
+
+    # 拉取该中转站的模型列表并保存（本地版模型不写死，全部来自用户中转站）'''
+            new_t = '''    api_key = req.api_key.strip()
+    provider = (req.provider or "aixinghuo").strip().lower()
+    # 供应商 base 平台写死（防用户指向其他服务商绕开计费）
+    from common.config import RELAY_PROVIDERS
+
+    if provider not in RELAY_PROVIDERS:
+        raise HTTPException(400, "不支持的供应商，请选择 aixinghuo 或 agnes")
+    _DEFAULT_BASE = RELAY_PROVIDERS[provider]
+
+    ok, err = await _verify_user_key(api_key, _DEFAULT_BASE)
+    if not ok:
+        raise HTTPException(400, f"{provider} Key 校验失败：{err}（请确认 Key 正确且对应供应商）")
+
+    # 拉取该供应商的模型列表并保存（本地版模型不写死，全部来自用户选择的中转站）'''
+            if old_t in s:
+                s = s.replace(old_t, new_t, 1)
+                n += 1
+        if '"provider": provider,' not in s:
+            old_t = '''        conn.execute(
+            "UPDATE users SET relay_api_key=?, relay_api_base='' WHERE id=?",
+            (api_key, uid),
+        )'''
+            new_t = '''        conn.execute(
+            "UPDATE users SET relay_api_key=?, relay_api_base='', relay_provider=? WHERE id=?",
+            (api_key, provider, uid),
+        )'''
+            if old_t in s:
+                s = s.replace(old_t, new_t, 1)
+                n += 1
+        if '"providers": list(RELAY_PROVIDERS.keys())' not in s:
+            old_t = '''    uid = current_user.get("user_id", "")
+    relay = get_user_relay_config(uid)
+    from common.config import AGNES_API_BASE as _DEFAULT_BASE
+
+    return {
+        "configured": bool(relay.get("api_key")),
+        "api_key_masked": _mask_key(relay["api_key"]) if relay.get("api_key") else "",
+        "api_base": relay.get("api_base") or _DEFAULT_BASE,
+        "default_base": _DEFAULT_BASE,
+        "register_url": "https://aixinghuo.net/",
+    }'''
+            new_t = '''    uid = current_user.get("user_id", "")
+    relay = get_user_relay_config(uid)
+    from common.config import AGNES_API_BASE as _DEFAULT_BASE, RELAY_PROVIDERS
+
+    provider = relay.get("provider") or "aixinghuo"
+    _base = RELAY_PROVIDERS.get(provider, _DEFAULT_BASE)
+    _register = "https://aixinghuo.net/" if provider == "aixinghuo" else "https://apihub.agnes-ai.com/"
+    return {
+        "configured": bool(relay.get("api_key")),
+        "api_key_masked": _mask_key(relay["api_key"]) if relay.get("api_key") else "",
+        "api_base": _base,
+        "default_base": _DEFAULT_BASE,
+        "provider": provider,
+        "providers": list(RELAY_PROVIDERS.keys()),
+        "register_url": _register,
+    }'''
+            if old_t in s:
+                s = s.replace(old_t, new_t, 1)
+                n += 1
+        if "relay_provider='aixinghuo'" not in s:
+            old_t = '"UPDATE users SET relay_api_key=\'\', relay_api_base=\'\' WHERE id=?",'
+            new_t = '"UPDATE users SET relay_api_key=\'\', relay_api_base=\'\', relay_provider=\'aixinghuo\' WHERE id=?",'
+            if old_t in s:
+                s = s.replace(old_t, new_t, 1)
+                n += 1
+        open(p, 'w', encoding='utf-8').write(s)
+
+    # 4. app_creation.py 列
+    p = os.path.join(B, 'app_creation.py')
+    if os.path.exists(p):
+        s = open(p, encoding='utf-8').read()
+        if 'relay_provider' not in s:
+            old_t = '''        try:
+            conn.execute("ALTER TABLE users ADD COLUMN relay_api_base TEXT DEFAULT ''")
+        except Exception:
+            pass
+        conn.commit()'''
+            new_t = '''        try:
+            conn.execute("ALTER TABLE users ADD COLUMN relay_api_base TEXT DEFAULT ''")
+        except Exception:
+            pass
+        try:
+            conn.execute("ALTER TABLE users ADD COLUMN relay_provider TEXT DEFAULT 'aixinghuo'")
+        except Exception:
+            pass
+        conn.commit()'''
+            if old_t in s:
+                s = s.replace(old_t, new_t, 1)
+                n += 1
+        open(p, 'w', encoding='utf-8').write(s)
+
+    # 5. task_queue.py worker base
+    p = os.path.join(B, 'task_queue.py')
+    if os.path.exists(p):
+        s = open(p, encoding='utf-8').read()
+        if '_relay["api_base"] = RELAY_PROVIDERS.get(_provider' not in s:
+            old_t = '''            try:
+                from common.config import resolve_feature_model
+
+                _relay["default_model"] = resolve_feature_model(_uid, "default", "")
+            except Exception:
+                pass
+            set_relay_context(_relay)'''
+            new_t = '''            try:
+                from common.config import RELAY_PROVIDERS, resolve_feature_model
+
+                _relay["default_model"] = resolve_feature_model(_uid, "default", "")
+                _provider = (_relay.get("provider") or "aixinghuo").lower()
+                _relay["api_base"] = RELAY_PROVIDERS.get(_provider, _relay.get("api_base") or "")
+            except Exception:
+                pass
+            set_relay_context(_relay)'''
+            if old_t in s:
+                s = s.replace(old_t, new_t, 1)
+                n += 1
+        open(p, 'w', encoding='utf-8').write(s)
+
+    # 6. 工厂 URL：AGNES_API_BASE → resolve_api_base()
+    for f in ('image_factory.py', 'video_factory.py', 'meme_factory.py', 'digital_human.py',
+              'short_drama.py', 'voice_factory.py', 'music_factory.py', 'ai_video_api.py'):
+        p = os.path.join(B, f)
+        if not os.path.exists(p):
+            continue
+        s = open(p, encoding='utf-8').read()
+        if '{resolve_api_base()}' not in s:
+            s = _re.subn(r'\{AGNES_API_BASE\}', '{resolve_api_base()}', s)[0]
+            s = _re.subn(r'AGNES_API_BASE\.rstrip', 'resolve_api_base().rstrip', s)[0]
+            if 'AGNES_API_BASE as _BASE' in s:
+                s = s.replace('from common.config import AGNES_API_BASE as _BASE', 'from common.config import resolve_api_base as _BASE', 1)
+                s = _re.subn(r'\{_BASE\}', '{_BASE()}', s)[0]
+            # 补导入
+            if 'resolve_api_base' not in s.split('def ')[0] and 'from common.config import load_config, resolve_api_key' in s:
+                s = s.replace('from common.config import load_config, resolve_api_key', 'from common.config import load_config, resolve_api_key, resolve_api_base', 1)
+                n += 1
+            elif 'resolve_api_base' not in s.split('def ')[0] and 'from common.config import AGNES_API_BASE, AGNES_API_KEY, load_config, resolve_api_key' in s:
+                s = s.replace('from common.config import AGNES_API_BASE, AGNES_API_KEY, load_config, resolve_api_key', 'from common.config import AGNES_API_BASE, AGNES_API_KEY, load_config, resolve_api_key, resolve_api_base', 1)
+                n += 1
+            elif 'resolve_api_base' not in s.split('def ')[0] and 'from common.config import AGNES_API_BASE, AGNES_API_KEY, IMAGE_MODEL, require_model, resolve_api_key' in s:
+                s = s.replace('from common.config import AGNES_API_BASE, AGNES_API_KEY, IMAGE_MODEL, require_model, resolve_api_key', 'from common.config import AGNES_API_BASE, AGNES_API_KEY, IMAGE_MODEL, require_model, resolve_api_key, resolve_api_base', 1)
+                n += 1
+            elif 'resolve_api_base' not in s.split('def ')[0] and 'from common.config import AGNES_API_BASE, AGNES_API_KEY' in s:
+                s = s.replace('from common.config import AGNES_API_BASE, AGNES_API_KEY', 'from common.config import AGNES_API_BASE, AGNES_API_KEY, resolve_api_base', 1)
+                n += 1
+            open(p, 'w', encoding='utf-8').write(s)
+            n += 1
+    return n
+
 def apply_all() -> int:
     """应用全部定制补丁，返回补丁数。"""
     total = 0
@@ -888,6 +1161,7 @@ def apply_all() -> int:
     total += _patch_video_templates_free()
     total += _patch_template_store_free()
     total += _patch_voice_dh_models()
+    total += _patch_provider_support()
     return total
 
 

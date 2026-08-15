@@ -207,8 +207,9 @@ async def _probe_relay(relay: dict) -> tuple:
 
 
 class UserRelayRequest(BaseModel):
-    api_key: str = Field(..., min_length=8, max_length=200, description="中转站 API Key")
-    # 注意：中转站 URL 由平台写死（防用户指向其他服务商），用户只能填 key
+    api_key: str = Field(..., min_length=8, max_length=200, description="API Key")
+    provider: str = Field("aixinghuo", description="供应商：aixinghuo(爱星火中转站) / agnes(AGNES官方)")
+    # 注意：供应商 base 由平台写死（防用户指向其他服务商绕开计费），用户只能选供应商填 key
 
 
 @router.get("/me")
@@ -216,14 +217,19 @@ async def get_my_relay(current_user: dict = require_auth()):
     """读取当前用户的中转站配置（key 脱敏）。"""
     uid = current_user.get("user_id", "")
     relay = get_user_relay_config(uid)
-    from common.config import AGNES_API_BASE as _DEFAULT_BASE
+    from common.config import AGNES_API_BASE as _DEFAULT_BASE, RELAY_PROVIDERS
 
+    provider = relay.get("provider") or "aixinghuo"
+    _base = RELAY_PROVIDERS.get(provider, _DEFAULT_BASE)
+    _register = "https://aixinghuo.net/" if provider == "aixinghuo" else "https://apihub.agnes-ai.com/"
     return {
         "configured": bool(relay.get("api_key")),
         "api_key_masked": _mask_key(relay["api_key"]) if relay.get("api_key") else "",
-        "api_base": relay.get("api_base") or _DEFAULT_BASE,
+        "api_base": _base,
         "default_base": _DEFAULT_BASE,
-        "register_url": "https://aixinghuo.net/",
+        "provider": provider,
+        "providers": list(RELAY_PROVIDERS.keys()),
+        "register_url": _register,
     }
 
 
@@ -235,14 +241,19 @@ async def update_my_relay(req: UserRelayRequest, current_user: dict = require_au
         raise HTTPException(401, "请先登录")
 
     api_key = req.api_key.strip()
-    # 中转站 URL 平台写死（防用户指向其他服务商绕开计费）
-    from common.config import AGNES_API_BASE as _DEFAULT_BASE
+    provider = (req.provider or "aixinghuo").strip().lower()
+    # 供应商 base 平台写死（防用户指向其他服务商绕开计费）
+    from common.config import RELAY_PROVIDERS
+
+    if provider not in RELAY_PROVIDERS:
+        raise HTTPException(400, "不支持的供应商，请选择 aixinghuo 或 agnes")
+    _DEFAULT_BASE = RELAY_PROVIDERS[provider]
 
     ok, err = await _verify_user_key(api_key, _DEFAULT_BASE)
     if not ok:
-        raise HTTPException(400, f"中转站 Key 校验失败：{err}（请确认是本站签发的 Key）")
+        raise HTTPException(400, f"{provider} Key 校验失败：{err}（请确认 Key 正确且对应供应商）")
 
-    # 拉取该中转站的模型列表并保存（本地版模型不写死，全部来自用户中转站）
+    # 拉取该供应商的模型列表并保存（本地版模型不写死，全部来自用户选择的中转站）
     models_saved = 0
     try:
         async with httpx.AsyncClient(timeout=20) as client:
@@ -275,14 +286,15 @@ async def update_my_relay(req: UserRelayRequest, current_user: dict = require_au
 
     with get_db_context() as conn:
         conn.execute(
-            "UPDATE users SET relay_api_key=?, relay_api_base='' WHERE id=?",
-            (api_key, uid),
+            "UPDATE users SET relay_api_key=?, relay_api_base='', relay_provider=? WHERE id=?",
+            (api_key, provider, uid),
         )
     return {
         "success": True,
-        "message": "中转站 Key 已保存，AI 功能将使用你的 Key 计费",
+        "message": f"{provider} Key 已保存，AI 功能将使用你的 Key 计费",
         "api_key_masked": _mask_key(api_key),
         "api_base": _DEFAULT_BASE,
+        "provider": provider,
         "models": models_saved,
         "model_hint": "模型列表已从中转站同步" if models_saved else "已保存 Key（模型列表同步失败，请重试或检查中转站）",
     }
@@ -292,12 +304,17 @@ async def update_my_relay(req: UserRelayRequest, current_user: dict = require_au
 async def verify_user_relay_key(req: UserRelayRequest, current_user: dict = require_auth()):
     """校验中转站 Key 是否有效（不保存）。"""
     api_key = req.api_key.strip()
-    from common.config import AGNES_API_BASE as _DEFAULT_BASE
+    provider = (req.provider or "aixinghuo").strip().lower()
+    from common.config import RELAY_PROVIDERS
+
+    if provider not in RELAY_PROVIDERS:
+        raise HTTPException(400, "不支持的供应商，请选择 aixinghuo 或 agnes")
+    _DEFAULT_BASE = RELAY_PROVIDERS[provider]
 
     ok, err = await _verify_user_key(api_key, _DEFAULT_BASE)
     if not ok:
-        raise HTTPException(400, f"中转站 Key 校验失败：{err}")
-    return {"success": True, "message": "Key 有效，可以正常使用"}
+        raise HTTPException(400, f"{provider} Key 校验失败：{err}")
+    return {"success": True, "message": f"{provider} Key 有效，可以正常使用", "provider": provider}
 
 
 @router.delete("/me")
@@ -306,7 +323,7 @@ async def clear_my_relay(current_user: dict = require_auth()):
     uid = current_user.get("user_id", "")
     with get_db_context() as conn:
         conn.execute(
-            "UPDATE users SET relay_api_key='', relay_api_base='' WHERE id=?",
+            "UPDATE users SET relay_api_key='', relay_api_base='', relay_provider='aixinghuo' WHERE id=?",
             (uid,),
         )
         conn.execute("DELETE FROM config WHERE key='model_list'")

@@ -38,7 +38,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 
 from common.artifacts import save_artifact
 from common.auth import require_auth
-from common.config import AGNES_API_BASE, AGNES_API_KEY, load_config, resolve_api_key
+from common.config import AGNES_API_BASE, AGNES_API_KEY, load_config, resolve_api_key, resolve_api_base
 from common.llm import call_llm_async
 from task_queue import create_task, register_handler
 
@@ -394,7 +394,7 @@ def _generate_scene_image(shot: str, anchors: str = "", refs: list[bytes] | None
         if refs:
             body["image"] = ["data:image/jpeg;base64," + base64.b64encode(r).decode() for r in refs]
         r = requests.post(
-            f"{AGNES_API_BASE}/images/generations",
+            f"{resolve_api_base()}/images/generations",
             headers={"Authorization": f"Bearer {resolve_api_key()}", "Content-Type": "application/json"},
             json=body,
             timeout=90,

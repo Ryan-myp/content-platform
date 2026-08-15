@@ -153,7 +153,7 @@ def _agnes_avatar_submit(payload: dict) -> str:
     """提交 AGNES 视频任务（口型同步：image + audio → 说话视频），返回 video_id。"""
     import requests as _req
 
-    from common.config import AGNES_API_BASE, AGNES_API_KEY
+    from common.config import AGNES_API_BASE, AGNES_API_KEY, resolve_api_base
 
     mode = payload.get("mode", "text2video")
     prompt = payload.get("prompt", "")
@@ -197,7 +197,7 @@ def _agnes_avatar_submit(payload: dict) -> str:
 
     try:
         resp = _req.post(
-            f"{AGNES_API_BASE}/videos",
+            f"{resolve_api_base()}/videos",
             headers={"Authorization": f"Bearer {AGNES_API_KEY}", "Content-Type": "application/json"},
             json=body,
             timeout=60,
@@ -227,7 +227,7 @@ def _agnes_avatar_poll(video_id: str, update: callable) -> str:
         _time.sleep(_POLL_INTERVAL)
         try:
             resp = _req.get(
-                f"{AGNES_API_BASE}/agnesapi",
+                f"{resolve_api_base()}/agnesapi",
                 params={"video_id": video_id},
                 headers={"Authorization": f"Bearer {AGNES_API_KEY}"},
                 timeout=30,

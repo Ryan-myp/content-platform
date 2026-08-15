@@ -52,6 +52,10 @@ async def lifespan(app: FastAPI):
             conn.execute("ALTER TABLE users ADD COLUMN relay_api_base TEXT DEFAULT ''")
         except Exception:
             pass
+        try:
+            conn.execute("ALTER TABLE users ADD COLUMN relay_provider TEXT DEFAULT 'aixinghuo'")
+        except Exception:
+            pass
         conn.commit()
         conn.close()
     except Exception:
