@@ -2228,7 +2228,7 @@ export default function ImageFactoryPage() {
 
               {!stats.api_configured && (
                 <div className="px-4 py-3 bg-yellow-50 border border-yellow-200 text-yellow-700 rounded-xl text-sm">
-                  未配置 AGNES_API_KEY，API 调用可能失败
+                  未配置中转站 API Key，AI 生成暂不可用（请前往个人中心配置）
                 </div>
               )}
             </div>

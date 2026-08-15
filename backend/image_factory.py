@@ -324,8 +324,8 @@ async def enhance_prompt(prompt: str = Form(...), current_user: dict = require_a
 
 # ── 统计 API ──────────────────────────────────────────────────
 @router.get("/stats")
-async def get_stats():
-    """获取图片工厂统计"""
+async def get_stats(current_user: dict = require_auth()):
+    """获取图片工厂统计（api_configured 按当前用户的中转站 Key 判断）"""
     files = []
     if os.path.exists(IMAGE_DIR):
         files = [f for f in os.listdir(IMAGE_DIR) if f.endswith((".png", ".jpg", ".jpeg"))]
@@ -336,7 +336,7 @@ async def get_stats():
         "total_images": len(files),
         "total_templates": len(templates),
         "image_dir": IMAGE_DIR,
-        "api_configured": bool(AGNES_API_KEY),
+        "api_configured": bool(resolve_api_key()),
     }
 
 

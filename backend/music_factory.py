@@ -138,11 +138,11 @@ def _save_artifact(
 
 
 @router.get("/stats")
-async def get_stats():
+async def get_stats(current_user: dict = require_auth()):
     music_count = len(list(MUSIC_DIR.glob("*"))) if MUSIC_DIR.exists() else 0
     return {
         "total_tracks": music_count,
-        "api_configured": bool(AGNES_API_KEY),
+        "api_configured": bool(resolve_api_key()),
         "features": ["歌词生成", "音乐合成", "虚拟人声"],
         # 引擎状态：大模型 ACE-Step（可用优先）/ 本地 CosyVoice 真歌声 + numpy 伴奏
         "engine": {

@@ -713,6 +713,13 @@ def _patch_no_hardcoded_models() -> int:
         ('ai_video_api.py',
          '    body = {\n        "model": "agnes-video-v2.0",',
          '    from common.config import require_model\n\n    body = {\n        "model": require_model(payload.get("model") or None, "视频"),'),
+        # stats api_configured 按用户中转站 Key 判断（AGNES_API_KEY 全局已置空）
+        ('image_factory.py',
+         '    return {\n        "total_images": len(files),\n        "total_templates": len(templates),\n        "image_dir": IMAGE_DIR,\n        "api_configured": bool(AGNES_API_KEY),\n    }',
+         '    return {\n        "total_images": len(files),\n        "total_templates": len(templates),\n        "image_dir": IMAGE_DIR,\n        "api_configured": bool(resolve_api_key()),\n    }'),
+        ('music_factory.py',
+         '    return {\n        "total_tracks": music_count,\n        "api_configured": bool(AGNES_API_KEY),',
+         '    return {\n        "total_tracks": music_count,\n        "api_configured": bool(resolve_api_key()),'),
     ]
     n = 0
     for fname, old_t, new_t in edits:
