@@ -41,7 +41,7 @@ const PKG_VERSION = (() => {
 // 启动时异步检查 npm 最新版本（镜像滞后/旧缓存时提示升级命令）
 async function checkLatestVersion() {
   try {
-    const res = await fetch('https://registry.npmjs.org/@ryan-myp%2Fcode-platform/latest', {
+    const res = await fetch('https://registry.npmjs.org/@ryan-myp%2Fcontent-platform/latest', {
       headers: { 'User-Agent': 'code-platform-cli' },
       signal: AbortSignal.timeout(5000),
     })
@@ -52,7 +52,7 @@ async function checkLatestVersion() {
       console.log('')
       console.log(`  ⚠️  检测到新版本 ${latest}（当前 ${PKG_VERSION}）`)
       console.log('     若镜像同步滞后导致 npx 拉到旧版，请用官方源安装：')
-      console.log('     npx --registry=https://registry.npmjs.org @ryan-myp/code-platform web')
+      console.log('     npx --registry=https://registry.npmjs.org @ryan-myp/content-platform web')
       console.log('     或清缓存重装：rm -rf ~/.npm/_npx ~/.cache/code-platform')
       console.log('')
     }
@@ -147,7 +147,7 @@ program
     if (wantBackend) console.log(`     ⚙️ 后端:  ${backendUrl}`)
     console.log('')
     console.log('  ⚠️  请以浏览器打开上方「前端」地址；若端口冲突自动改号，以实际端口为准')
-    console.log('  💡 自定义端口：npx @ryan-myp/code-platform web --port 8080 --backend-port 9000')
+    console.log('  💡 自定义端口：npx @ryan-myp/content-platform web --port 8080 --backend-port 9000')
     console.log('')
     // 后台检查最新版本（不阻塞启动）
     checkLatestVersion()

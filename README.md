@@ -30,13 +30,16 @@ python app_creation.py        # 默认 8888，PORT 可覆盖
 
 ## npx 一键部署
 ```bash
-npx @ryan-myp/code-platform web
+npx @ryan-myp/content-platform web
 ```
+
+> 📦 包名更名说明：原 `@ryan-myp/code-platform` 已废弃（npm 安装时会提示），
+> 统一使用 `@ryan-myp/content-platform`（与仓库名一致）。
 
 > ⚠️ 国内 npm 镜像（npmmirror）同步滞后，可能导致 npx 拉到旧版本（旧版有登录页/研发入口）。
 > 若看到登录页或研发管理菜单，请用官方源安装最新版：
 > ```bash
-> npx --registry=https://registry.npmjs.org @ryan-myp/code-platform web
+> npx --registry=https://registry.npmjs.org @ryan-myp/content-platform web
 > ```
 > 启动时会自动检测并提示新版本；端口冲突自动改号，请以「✨ 平台已就绪」横幅中的实际前端地址为准
 > （旧实例残留时，不要打开端口冲突前那个端口，那可能是旧版本服务）。
@@ -71,7 +74,7 @@ python3 content-platform/sync_from_main.py --frontend  # 同步后端 + 前端�
 ### 端口被占用 / 想自定义端口
 ```bash
 # 自定义端口：--port=前端 --backend-port=后端
-npx @ryan-myp/code-platform web --port 8080 --backend-port 9000
+npx @ryan-myp/content-platform web --port 8080 --backend-port 9000
 
 # 端口被占用时自动换可用端口（无需手动处理）
 ```
@@ -79,7 +82,7 @@ npx @ryan-myp/code-platform web --port 8080 --backend-port 9000
 ### 更新 / 重装到最新版
 ```bash
 rm -rf ~/.cache/code-platform ~/.npm/_npx   # 清缓存
-npx @ryan-myp/code-platform web              # 重新下载运行
+npx @ryan-myp/content-platform web              # 重新下载运行
 ```
 
 ### 完全卸载
