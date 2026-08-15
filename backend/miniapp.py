@@ -703,7 +703,7 @@ def _review_material_md(files: dict, name: str, template: str, app_cfg: dict, ch
     lines = [
         f"# 《{name}》微信小程序提审材料",
         "",
-        "> 由小团智能平台自动生成（app.json 字段核对 + 代码权限扫描），请核对后补充资料提交审核。",
+        "> 由AI 星火自动生成（app.json 字段核对 + 代码权限扫描），请核对后补充资料提交审核。",
         "",
         "## 一、项目信息",
         f"- 名称：{name}",

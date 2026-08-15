@@ -82,7 +82,7 @@ export default function WebSearchPage() {
       res.sources.forEach((s, i) => lines.push(`${i + 1}. [${s.title}](${s.url})`))
       lines.push('')
     }
-    lines.push(`> 由小团智能平台 AI 联网搜索生成 · ${new Date().toLocaleString()}`)
+    lines.push(`> 由AI 星火 AI 联网搜索生成 · ${new Date().toLocaleString()}`)
     return lines.join('\n')
   }
 

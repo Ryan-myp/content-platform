@@ -18,7 +18,7 @@ const PREFIX_TITLES = {
   '/tool/': 'AI 工具',
 }
 
-export const SITE_NAME = '小团智能平台'
+export const SITE_NAME = 'AI 星火'
 
 export function pageTitleFor(pathname) {
   if (!pathname) return SITE_NAME

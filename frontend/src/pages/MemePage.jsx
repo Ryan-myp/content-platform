@@ -1324,7 +1324,7 @@ export default function MemePage() {
                       </button>
                       <span onClick={(e) => e.stopPropagation()}>
                         <ShareButton
-                          content={`# 表情包：${item.title}\n\n风格：${item.style_label || '未标记'}\n\n> 由小团智能平台表情包工坊生成 · ${new Date().toLocaleString()}`}
+                          content={`# 表情包：${item.title}\n\n风格：${item.style_label || '未标记'}\n\n> 由AI 星火表情包工坊生成 · ${new Date().toLocaleString()}`}
                           title={`表情包：${item.title}`}
                           contentType="meme"
                           className="!p-1 !text-white !bg-transparent"

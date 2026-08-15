@@ -1446,7 +1446,7 @@ export default function MusicFactoryPage() {
                   </button>
                   <span onClick={(e) => e.stopPropagation()}>
                     <ShareButton
-                      content={`# 音乐作品：${audio.filename}\n\n- 文件：${audio.filename}\n- 大小：${formatBytes(audio.size)}\n\n> 由小团智能平台 AI 音乐工坊生成 · ${new Date().toLocaleString()}`}
+                      content={`# 音乐作品：${audio.filename}\n\n- 文件：${audio.filename}\n- 大小：${formatBytes(audio.size)}\n\n> 由AI 星火 AI 音乐工坊生成 · ${new Date().toLocaleString()}`}
                       title={`音乐作品：${audio.filename}`}
                       contentType="music"
                       className="!p-2"

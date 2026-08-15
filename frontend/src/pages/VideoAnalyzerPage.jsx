@@ -149,7 +149,7 @@ export default function VideoAnalyzerPage() {
         lines.push('')
       })
     }
-    lines.push('---', `由小团智能平台 AI 视频分析生成 · ${new Date().toLocaleString()}`)
+    lines.push('---', `由AI 星火 AI 视频分析生成 · ${new Date().toLocaleString()}`)
     return lines.join('\n')
   }
 

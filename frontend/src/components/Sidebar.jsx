@@ -422,7 +422,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, user, portal, onL
                 <span className="text-white font-bold text-sm tracking-tight">AI</span>
               </div>
               <div>
-                <h1 className="font-semibold text-ink-900 tracking-tight">小团智能平台</h1>
+                <h1 className="font-semibold text-ink-900 tracking-tight">AI 星火</h1>
                 <p className="text-xs text-ink-400 mt-0.5">AI 赋能 · 智效未来</p>
               </div>
             </Link>
@@ -485,7 +485,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, user, portal, onL
           <div className="w-8 h-8 bg-gradient-to-br from-brand-500 to-brand-700 rounded-lg flex items-center justify-center shadow-soft">
             <span className="text-white font-bold text-xs">AI</span>
           </div>
-          <span className="font-semibold text-ink-900">小团智能平台</span>
+          <span className="font-semibold text-ink-900">AI 星火</span>
         </div>
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -510,7 +510,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, user, portal, onL
                     <span className="text-white font-bold text-sm">AI</span>
                   </div>
                   <div>
-                    <h1 className="font-semibold text-ink-900">小团智能平台</h1>
+                    <h1 className="font-semibold text-ink-900">AI 星火</h1>
                     <p className="text-xs text-ink-400">{portal?.portal_name || '通用版'}</p>
                   </div>
                 </div>

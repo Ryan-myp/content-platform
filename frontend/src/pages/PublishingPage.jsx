@@ -1097,7 +1097,7 @@ export default function PublishingPage() {
                   </h3>
                   <div className="flex items-center gap-2">
                     <ShareButton
-                      content={`# 发布结果：${result.title || '未命名'}\n\n平台：${result.platform_label || '—'} · 内容类型：${result.content_type || '—'} · 模式：${MODE_BADGE[result.mode]?.label || result.mode}\n\n${result.content || ''}\n\n> 由小团智能平台发布中心生成 · ${new Date().toLocaleString()}`}
+                      content={`# 发布结果：${result.title || '未命名'}\n\n平台：${result.platform_label || '—'} · 内容类型：${result.content_type || '—'} · 模式：${MODE_BADGE[result.mode]?.label || result.mode}\n\n${result.content || ''}\n\n> 由AI 星火发布中心生成 · ${new Date().toLocaleString()}`}
                       title="发布结果"
                       contentType="publishing"
                     />

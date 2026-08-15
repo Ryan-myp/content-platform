@@ -88,7 +88,7 @@ def send_password_reset_email(to_email: str, username: str, reset_link: str) -> 
   <p style="color:#bbb;font-size:12px">如果不是你本人操作，请忽略此邮件，你的账号是安全的。</p>
 </div></body></html>"""
     text = f"你好 {username}，重置密码链接（30分钟有效）：{reset_link}"
-    return send_email(to=to_email, subject="[小团智能平台] 密码重置", html=html, text=text)
+    return send_email(to=to_email, subject="[AI 星火] 密码重置", html=html, text=text)
 
 
 def send_trial_expiry_email(to_email: str, username: str, days_left: int) -> dict:
@@ -102,6 +102,6 @@ def send_trial_expiry_email(to_email: str, username: str, days_left: int) -> dic
     <a href="https://localhost:5173/membership" style="background:#6366f1;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;display:inline-block">查看会员方案</a>
   </p>
   <hr style="border:none;border-top:1px solid #eee;margin:24px 0">
-  <p style="color:#bbb;font-size:12px">小团智能平台 · AI赋能智效未来</p>
+  <p style="color:#bbb;font-size:12px">AI 星火 · AI赋能智效未来</p>
 </div></body></html>"""
-    return send_email(to=to_email, subject="[小团智能平台] 试用即将到期", html=html)
+    return send_email(to=to_email, subject="[AI 星火] 试用即将到期", html=html)

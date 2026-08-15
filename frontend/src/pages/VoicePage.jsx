@@ -101,12 +101,12 @@ const VOICES = [
 // 场景化示例文案（点击场景卡片且文本为空时自动填充；随机文案从当前场景池抽取）
 const SCENE_TEXT_TEMPLATES = {
   shortvideo: [
-    '大家好，欢迎来到小团智能平台，今天用 3 分钟教你做出一个爆款短视频，从选题到剪辑，全程干货，先点赞收藏再观看。',
+    '大家好，欢迎来到AI 星火，今天用 3 分钟教你做出一个爆款短视频，从选题到剪辑，全程干货，先点赞收藏再观看。',
     '你有没有发现，短视频的黄金三秒决定了播放量，今天分享三个开头技巧，让你的视频完播率翻倍。',
     '揭秘！普通人也能学会的短视频涨粉方法，第一步就是找准自己的赛道，第二步持续输出垂直内容。',
   ],
   ad: [
-    '还在为效率低下烦恼吗？小团智能平台一站式搞定文案、图片、视频，一次创作，全平台分发，现在注册还有免费额度，赶紧体验吧！',
+    '还在为效率低下烦恼吗？AI 星火一站式搞定文案、图片、视频，一次创作，全平台分发，现在注册还有免费额度，赶紧体验吧！',
     '限时福利！今天下单立减五十元，前一百名还送精美礼品，机会有限，错过再等一年，赶快点击下方链接抢购！',
     '这款产品凭什么销量十万加？三大核心优势：材质升级、工艺精良、售后无忧，用户口碑爆棚，你还在犹豫什么？',
   ],
@@ -126,7 +126,7 @@ const SCENE_TEXT_TEMPLATES = {
     '叮咚，魔法城堡的大门打开了，小公主和小伙伴们要出发去寻找会唱歌的星星啦，出发之前，先把小手洗干净哦！',
   ],
   custom: [
-    '欢迎来到小团智能平台，在这里，你可以自由选择音色、语速和音调，打造专属于你的声音。',
+    '欢迎来到AI 星火，在这里，你可以自由选择音色、语速和音调，打造专属于你的声音。',
     '这是一段自定义配音示例文本，你可以替换成自己的内容，选择喜欢的音色开始创作。',
   ],
 }
@@ -646,7 +646,7 @@ export default function VoicePage() {
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder="输入要配音的文字，如：大家好，欢迎来到小团智能平台，今天教你 3 分钟做出一个爆款短视频…"
+              placeholder="输入要配音的文字，如：大家好，欢迎来到AI 星火，今天教你 3 分钟做出一个爆款短视频…"
               rows={6}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500 outline-none"
             />
@@ -998,7 +998,7 @@ export default function VoicePage() {
                       </button>
                       <span onClick={(e) => e.stopPropagation()}>
                         <ShareButton
-                          content={`# 配音作品：${item.title}\n\n文本：${item.text || ''}\n音色：${item.voice_name || ''} · 场景：${item.scene_label || ''}\n\n> 由小团智能平台 AI 配音工坊生成 · ${new Date().toLocaleString()}`}
+                          content={`# 配音作品：${item.title}\n\n文本：${item.text || ''}\n音色：${item.voice_name || ''} · 场景：${item.scene_label || ''}\n\n> 由AI 星火 AI 配音工坊生成 · ${new Date().toLocaleString()}`}
                           title={`配音：${item.title}`}
                           contentType="voice"
                           className="!p-1.5"

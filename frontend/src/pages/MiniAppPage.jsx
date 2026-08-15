@@ -566,7 +566,7 @@ export default function MiniAppPage() {
                       </Button>
                       <span onClick={(e) => e.stopPropagation()}>
                         <ShareButton
-                          content={`# 小程序：${p.name}\n\n需求：${p.requirement || ''}\n\n> 由小团智能平台 AI 小程序工坊生成 · ${new Date().toLocaleString()}`}
+                          content={`# 小程序：${p.name}\n\n需求：${p.requirement || ''}\n\n> 由AI 星火 AI 小程序工坊生成 · ${new Date().toLocaleString()}`}
                           title={`小程序：${p.name}`}
                           contentType="miniapp"
                           className="!p-1.5"

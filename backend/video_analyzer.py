@@ -408,7 +408,7 @@ def build_report_md(record: dict, analysis: dict) -> str:
     lines += _va_md_segments(analysis)
     lines += _va_md_lists(analysis)
     lines.append("---")
-    lines.append("由小团智能平台 AI 视频分析生成")
+    lines.append("由AI 星火 AI 视频分析生成")
     return "\n".join(lines)
 
 

@@ -619,7 +619,7 @@ export default function MindMapPage() {
                     重新生成
                   </Button>
                   <ShareButton
-                    content={`# ${result.title || result.topic || '思维导图'}\n\n${result.description || ''}\n\n> 由小团智能平台 AI 思维导图生成 · ${new Date().toLocaleString()}`}
+                    content={`# ${result.title || result.topic || '思维导图'}\n\n${result.description || ''}\n\n> 由AI 星火 AI 思维导图生成 · ${new Date().toLocaleString()}`}
                     title={`思维导图：${result.title || result.topic}`}
                     contentType="mindmap"
                   />

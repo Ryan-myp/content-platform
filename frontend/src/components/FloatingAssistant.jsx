@@ -16,7 +16,7 @@ const QUICK_QUESTIONS = [
 ]
 
 const WELCOME =
-  '你好呀，我是**小团** 🤖 你的创作助手！\n\n我可以帮你解答平台使用问题：额度计算、功能入口、内容发布、小程序开发、中转站 Key 怎么配……\n\n直接输入问题，或点下方快捷问题试试吧～'
+  '你好呀，我是**星火** 🤖 你的创作助手！\n\n我可以帮你解答平台使用问题：额度计算、功能入口、内容发布、小程序开发、中转站 Key 怎么配……\n\n直接输入问题，或点下方快捷问题试试吧～'
 
 export default function FloatingAssistant() {
   const toast = useToast()
@@ -74,7 +74,7 @@ export default function FloatingAssistant() {
         ...prev,
         {
           role: 'assistant',
-          content: `😅 小团暂时走神了：${e.response?.data?.detail || e.message}`,
+          content: `😅 星火暂时走神了：${e.response?.data?.detail || e.message}`,
         },
       ])
       toast.error('助手请求失败')
@@ -122,7 +122,7 @@ export default function FloatingAssistant() {
               <Bot className="w-5 h-5 text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-white font-semibold text-sm leading-tight">小团智能助手</p>
+              <p className="text-white font-semibold text-sm leading-tight">AI 星火助手</p>
               <p className="text-white/70 text-[11px] flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />
                 在线 · 平台问题随时问
@@ -218,7 +218,7 @@ export default function FloatingAssistant() {
                   send()
                 }
               }}
-              placeholder="问问小团，例如：额度怎么算？"
+              placeholder="问问星火，例如：额度怎么算？"
               className="flex-1 px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all"
               maxLength={2000}
             />

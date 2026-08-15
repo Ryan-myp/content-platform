@@ -95,6 +95,10 @@ def _patch_digital_human() -> int:
     if old_wm in src:
         src = src.replace(old_wm, new_wm, 1)
         n += 1
+    # 水印品牌（本地版品牌为 AI 星火，防 sync 恢复旧品牌）
+    if 'WATERMARK_TEXT = "AI 数字人 · 小团智能"' in src:
+        src = src.replace('WATERMARK_TEXT = "AI 数字人 · 小团智能"', 'WATERMARK_TEXT = "AI 星火 · 数字人"', 1)
+        n += 1
     # 402 文案：去掉「升级会员」引导
     for old_msg, new_msg in [
         (

@@ -1300,7 +1300,7 @@ export default function ImageFactoryPage() {
     setPubPlatform('wechat')
     setPubTitle(img.prompt ? `AI 图片作品：${img.prompt.slice(0, 18)}` : 'AI 图片作品')
     setPubContent(
-      `# AI 图片作品\n\n${img.prompt ? `提示词：${img.prompt}\n\n` : ''}由小团智能平台 AI 图片工厂生成 · ${new Date().toLocaleString()}`
+      `# AI 图片作品\n\n${img.prompt ? `提示词：${img.prompt}\n\n` : ''}由AI 星火 AI 图片工厂生成 · ${new Date().toLocaleString()}`
     )
     setPubOpen(true)
   }
@@ -1872,7 +1872,7 @@ export default function ImageFactoryPage() {
       </button>
       <span onClick={(e) => e.stopPropagation()}>
         <ShareButton
-          content={`# AI 图片作品\n\n提示词：${img.prompt || ''}\n\n> 由小团智能平台 AI 图片工厂生成 · ${new Date().toLocaleString()}`}
+          content={`# AI 图片作品\n\n提示词：${img.prompt || ''}\n\n> 由AI 星火 AI 图片工厂生成 · ${new Date().toLocaleString()}`}
           title="AI 图片作品"
           contentType="image"
           className="!p-2 !bg-white !rounded-full"

@@ -56,7 +56,7 @@ def _key_status(expires_at: str) -> str:
 # 注意：web_search.py/batch_api.py/favorites_api.py 的 init_db() 已初始化 api_keys 表
 
 API_DOCS = {
-    "title": "小团智能平台 Open API",
+    "title": "AI 星火 Open API",
     "version": "v1.0",
     "base_url": "https://platform.xiaotuan.ai/api",
     "auth": "Bearer Token (API Key)",

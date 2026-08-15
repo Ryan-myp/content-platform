@@ -239,7 +239,7 @@ function SlideFooter({ t, index, total, dark = false }) {
       className="flex items-center justify-between pt-3 mt-1 text-[10px] opacity-60"
       style={{ color: dark ? '#D0D5DD' : t.gray }}
     >
-      <span>小团智能 · {t.name}</span>
+      <span>AI 星火 · {t.name}</span>
       <span className="flex items-center gap-1.5">
         <span className="w-4 h-0.5 rounded" style={{ background: t.accent }} />
         {String(index + 1).padStart(2, '0')} / {String(total).padStart(2, '0')}
@@ -346,7 +346,7 @@ function CoverSlide({ slide, t }) {
       <div className="relative flex items-center justify-between">
         <div className="flex items-center gap-2 text-xs opacity-60">
           <span className="w-8 h-1 rounded" style={{ background: t.accent }} />
-          小团智能平台 · AI PPT
+          AI 星火 · AI PPT
         </div>
         <div className="text-xs opacity-40">{year}</div>
       </div>

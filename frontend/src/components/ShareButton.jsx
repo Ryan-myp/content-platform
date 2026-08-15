@@ -27,7 +27,7 @@ export default function ShareButton({
     try {
       const res = await api.post('/api/shares', {
         content_type: contentType,
-        title: title || '小团智能平台生成结果',
+        title: title || 'AI 星火生成结果',
         content,
       })
       const shareCode = res.data.share_code

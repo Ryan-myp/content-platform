@@ -2136,7 +2136,7 @@ ${batchTexts
                       .map((t, i) => `${i + 1}. ${t}`)
                       .join('\n')}
 
-> 由小团智能平台数字人工厂批量生成 · ${new Date().toLocaleString()}`}
+> 由AI 星火数字人工厂批量生成 · ${new Date().toLocaleString()}`}
                     title="数字人批量生产任务"
                     contentType="digital-human"
                   />
@@ -3195,7 +3195,7 @@ ${batchTexts
             onChange={(e) => setAiVideoForm((p) => ({ ...p, prompt: e.target.value }))}
             placeholder={
               aiVideoForm.mode === 'lipsync'
-                ? '数字人口播文案，如：大家好，欢迎来到小团智能平台…（将自动合成配音）'
+                ? '数字人口播文案，如：大家好，欢迎来到AI 星火…（将自动合成配音）'
                 : '视频内容描述，如：一只小猫在月光下奔跑，电影感，特写镜头'
             }
             rows={3}

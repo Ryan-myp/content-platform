@@ -93,7 +93,7 @@ export default function ShortDramaPage() {
       if (s.dialogue) lines.push(`台词：${s.dialogue}`)
       if (s.keywords) lines.push(`关键词：${s.keywords}`)
     })
-    lines.push('', `> 由小团智能平台 AI 短剧工厂生成 · ${new Date().toLocaleString()}`)
+    lines.push('', `> 由AI 星火 AI 短剧工厂生成 · ${new Date().toLocaleString()}`)
     return lines.join('\n')
   }
   const copyScript = async () => {

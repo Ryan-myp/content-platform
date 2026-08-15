@@ -161,7 +161,7 @@ export default function ForecastPage() {
       })
       lines.push('')
     }
-    lines.push('---', '由小团智能平台 AI 数据预测生成', new Date().toLocaleString())
+    lines.push('---', '由AI 星火 AI 数据预测生成', new Date().toLocaleString())
     return lines.join('\n')
   }
 

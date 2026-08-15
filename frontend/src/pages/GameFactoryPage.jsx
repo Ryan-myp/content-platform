@@ -1014,7 +1014,7 @@ export default function GameFactoryPage() {
                       </Button>
                       <span onClick={(e) => e.stopPropagation()}>
                         <ShareButton
-                          content={`# 小游戏：${p.name}\n\n需求：${p.requirement || ''}\n\n> 由小团智能平台小游戏工坊生成 · ${new Date().toLocaleString()}`}
+                          content={`# 小游戏：${p.name}\n\n需求：${p.requirement || ''}\n\n> 由AI 星火小游戏工坊生成 · ${new Date().toLocaleString()}`}
                           title={`小游戏：${p.name}`}
                           contentType="game"
                           className="!p-1.5"

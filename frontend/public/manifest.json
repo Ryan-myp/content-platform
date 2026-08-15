@@ -1,6 +1,6 @@
 {
-  "name": "小团智能平台",
-  "short_name": "小团",
+  "name": "AI 星火",
+  "short_name": "星火",
   "description": "AI 驱动的智能工作平台",
   "start_url": "/",
   "display": "standalone",

@@ -96,7 +96,7 @@ async def lifespan(app: FastAPI):
     stop_workers()
 
 
-app = FastAPI(title="小团智能 · 内容创作平台", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="AI 星火 · 内容创作平台", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(RequestContextMiddleware)
 app.add_middleware(

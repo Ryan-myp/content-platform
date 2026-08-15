@@ -135,7 +135,7 @@ export default function HelpPage() {
             <HelpCircle className="w-5 h-5 text-brand-600" />
             帮助中心
           </h1>
-          <p className="text-sm text-ink-500">快速上手小团智能平台，常见问题一站解答</p>
+          <p className="text-sm text-ink-500">快速上手AI 星火，常见问题一站解答</p>
         </div>
         <button
           onClick={replayTour}

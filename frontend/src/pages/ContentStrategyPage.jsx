@@ -326,7 +326,7 @@ function ComplianceTab() {
       r.suggestions.forEach((s) => lines.push(`- ${s}`))
       lines.push('')
     }
-    lines.push('---', `由小团智能平台 AI 内容策略生成 · ${new Date().toLocaleString()}`)
+    lines.push('---', `由AI 星火 AI 内容策略生成 · ${new Date().toLocaleString()}`)
     return lines.join('\n')
   }
 

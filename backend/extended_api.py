@@ -3333,7 +3333,7 @@ def build_ab_report_md(test: dict, result: dict) -> str:
         "",
     ]
     lines += _ab_md_analysis(result)
-    lines += ["---", "由小团智能平台 AI A/B 测试生成"]
+    lines += ["---", "由AI 星火 AI A/B 测试生成"]
     return "\n".join(lines)
 
 
@@ -3887,7 +3887,7 @@ def _pptx_make_renderers(tpl: dict):
 
     def page_footer(slide, page_no: int, total: int, dark: bool = False):
         fg = RGBColor(208, 213, 221) if dark else colors["GRAY"]
-        text(slide, 0.8, 7.05, 4, 0.35, f"小团智能 · {tpl['name']}", 10, fg)
+        text(slide, 0.8, 7.05, 4, 0.35, f"AI 星火 · {tpl['name']}", 10, fg)
         text(slide, 11.6, 7.05, 1.0, 0.35, f"{page_no:02d} / {total:02d}", 10, fg, align=PP_ALIGN.RIGHT)
 
     return {"rect": rect, "text": text, "bullets": bullets, "notes": notes}, renderers, page_footer

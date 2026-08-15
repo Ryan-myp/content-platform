@@ -250,7 +250,7 @@ export default function CompetitorMonitorPage() {
       a.recommendations.forEach((x) => lines.push(`- ${x}`))
       lines.push('')
     }
-    lines.push('---', `由小团智能平台 AI 竞品监控生成 · ${new Date().toLocaleString()}`)
+    lines.push('---', `由AI 星火 AI 竞品监控生成 · ${new Date().toLocaleString()}`)
     return lines.join('\n')
   }
 

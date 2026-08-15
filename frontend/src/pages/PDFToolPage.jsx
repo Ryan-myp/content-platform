@@ -638,7 +638,7 @@ export default function PDFToolPage() {
                 <ShareButton
                   content={`# 合同审查报告：${contractTitle || '合同审查'}\n\n整体风险：${RISK_LABELS[contractResult.risk_level] || contractResult.risk_level}\n${contractResult.summary || ''}\n\n${(contractResult.risks || [])
                     .map((r) => `- 【${RISK_LABELS[r.risk] || r.risk}】${r.clause}：${r.issue}\n  建议：${r.suggestion}`)
-                    .join('\n')}\n\n> 由小团智能平台 AI 合同审查生成 · ${new Date().toLocaleString()}`}
+                    .join('\n')}\n\n> 由AI 星火 AI 合同审查生成 · ${new Date().toLocaleString()}`}
                   title={`合同审查：${contractTitle || '合同审查'}`}
                   contentType="pdf"
                 />
@@ -798,7 +798,7 @@ export default function PDFToolPage() {
                 <ShareButton
                   content={`# 简历优化报告：${targetPosition || '简历'}\n\n综合评分：${resumeResult.overall_score || '-'}\n${resumeResult.summary || ''}\n\n## 亮点\n${(resumeResult.highlights || []).map((h) => `- ${h}`).join('\n')}\n\n## 优化建议\n${(resumeResult.suggestions || [])
                     .map((s) => `- 原文：${s.original}\n  改写：${s.rewrite}\n  理由：${s.reason}`)
-                    .join('\n')}\n\n> 由小团智能平台 AI 简历优化生成 · ${new Date().toLocaleString()}`}
+                    .join('\n')}\n\n> 由AI 星火 AI 简历优化生成 · ${new Date().toLocaleString()}`}
                   title={`简历优化：${targetPosition || '简历'}`}
                   contentType="pdf"
                 />
