@@ -133,6 +133,8 @@ program
           process.exit(1)
         }
         console.log(`  ⚠️  前端端口 ${frontendPort} 已被占用，改用 ${free}`)
+        console.log(`     提示：${frontendPort} 端口上可能有旧实例仍在运行，建议先停止旧实例再启动：`)
+        console.log(`     lsof -ti :${frontendPort} -ti :8888 | xargs kill`)
         frontendPort = free
       }
       await startFrontend(DIST_PATH, frontendPort, backendUrl)

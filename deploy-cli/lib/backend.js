@@ -80,8 +80,13 @@ export async function startBackend(venvPython, preferredPort = 8888) {
     if (line) console.log(`     [backend:err] ${line.slice(0, 200)}`)
   })
 
-  backendProc.on('exit', (code) => {
-    console.log(`  ⏹  后端进程退出（code=${code}）`)
+  backendProc.on('exit', (code, signal) => {
+    if (signal) {
+      // 被信号终止（Ctrl+C / 终端中断等），非崩溃
+      console.log(`  ⏹  后端进程退出（收到信号 ${signal}）——如非手动 Ctrl+C，请检查是否有旧实例/终端关闭`)
+    } else {
+      console.log(`  ⏹  后端进程退出（code=${code}）`)
+    }
   })
 
   process.on('SIGINT', () => {
