@@ -4416,10 +4416,16 @@ def script_assist(req: ScriptAssistRequest, current_user: dict = require_auth())
         f"主题：{req.topic}；场景：{scene_style}{structure}；平台：{platform_name}；风格：{req.tone}。"
         "请生成3版不同切入角度的口播文案。"
     )
+    from common.config import resolve_feature_model
+
+    _uid = current_user.get("user_id", "") if isinstance(current_user, dict) else ""
     scripts = []
     ok = False
     try:
-        raw = call_llm(system, user_prompt, max_tokens=1500, temperature=0.9, timeout=60)
+        raw = call_llm(
+            system, user_prompt, max_tokens=1500, temperature=0.9, timeout=60,
+            model=resolve_feature_model(_uid, "dh", ""),
+        )
         raw = raw.strip()
         if raw.startswith("```"):
             raw = raw.split("\n", 1)[-1]

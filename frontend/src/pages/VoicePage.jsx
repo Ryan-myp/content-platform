@@ -169,6 +169,24 @@ export default function VoicePage() {
   const [voiceTplInfo, setVoiceTplInfo] = useState(null)
   const [voiceTplCat, setVoiceTplCat] = useState('全部')
   useEffect(() => {
+    const loadAudioModels = async () => {
+      try {
+        const res = await api.get('/api/config')
+        const models = (Array.isArray(res.data.models) ? res.data.models : [])
+          .map((x) => x?.name || x)
+          .filter((n) => /tts|speech|audio|voice/i.test(n))
+        setAudioModels(models)
+        const pref = res.data.audio_model || (models.length ? models[0] : '')
+        setSelectedAudioModel(pref)
+      } catch { /* 静默 */ }
+    }
+    loadAudioModels()
+    const onModelsUpdate = () => loadAudioModels()
+    window.addEventListener('models-updated', onModelsUpdate)
+    return () => window.removeEventListener('models-updated', onModelsUpdate)
+  }, [])
+
+useEffect(() => {
     api
       .get('/api/voice-templates/list')
       .then((res) => setVoiceTpls(res.data?.items || []))
@@ -211,6 +229,8 @@ export default function VoicePage() {
     }
   }
   const [previewing, setPreviewing] = useState('')
+  const [audioModels, setAudioModels] = useState([])
+  const [selectedAudioModel, setSelectedAudioModel] = useState('')
   const [generating, setGenerating] = useState(false)
   const [items, setItems] = useState([])
   const [stats, setStats] = useState(null)
@@ -608,6 +628,26 @@ export default function VoicePage() {
             <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-pink-500" /> 选择场景
             </h3>
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">生成模型</label>
+              <select
+                value={selectedAudioModel}
+                onChange={(e) => {
+                  const v = e.target.value
+                  setSelectedAudioModel(v)
+                  api.put('/api/model-prefs', { audio: v }).catch(() => {})
+                }}
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500 outline-none text-sm"
+              >
+                {audioModels.length === 0 && <option value="">默认（tts-1，请先配置中转站 Key）</option>}
+                {audioModels.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-[11px] text-gray-400">选择你中转站提供的音频/TTS 模型，可自由切换</p>
+            </div>
             <div className="grid grid-cols-2 gap-2">
               {SCENES.map((s) => (
                 <button

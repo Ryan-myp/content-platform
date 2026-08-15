@@ -252,3 +252,21 @@ def get_model_config(model_name: str | None = None) -> dict:
     if user_key:
         return {"model": name, "api_key": user_key, "api_base": AGNES_API_BASE}
     return {"model": name, "api_key": AGNES_API_KEY, "api_base": AGNES_API_BASE}
+
+def resolve_feature_model(uid: str, feature: str, fallback: str = "") -> str:
+    """读取用户按功能选择的模型偏好（model_prefs:{uid} {feature}），未选择用 fallback。"""
+    if not uid:
+        return fallback
+    try:
+        from common.db import get_db_context
+
+        with get_db_context() as conn:
+            row = conn.execute("SELECT value FROM config WHERE key=?", (f"model_prefs:{uid}",)).fetchone()
+        if row and row["value"]:
+            prefs = json.loads(row["value"])
+            m = (prefs.get(feature) or "").strip()
+            if m:
+                return m
+    except Exception:
+        pass
+    return fallback

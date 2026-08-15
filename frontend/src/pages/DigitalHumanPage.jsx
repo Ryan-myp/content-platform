@@ -154,6 +154,8 @@ export default function DigitalHumanPage() {
   const [resolution, setResolution] = useState('720p')
   const [fps, setFps] = useState(24) // 默认 24fps 流畅档（画质优先，异步任务可等）
   const [watermark, setWatermark] = useState(true) // 本地版自由开关水印
+  const [dhModels, setDhModels] = useState([])
+  const [selectedDhModel, setSelectedDhModel] = useState('')
   const [engine, setEngine] = useState('2d') // 引擎：2d=基础渲染，live_portrait=照片数字人
   const [genPhase, setGenPhase] = useState('') // 生成阶段提示文案
   const [quota, setQuota] = useState(null) // 今日剩余额度
@@ -1220,6 +1222,22 @@ const fmtDaysLeft = (days) => {
   }
 
   // ── AI 口播文案助手 ──
+  useEffect(() => {
+    const loadDhModels = async () => {
+      try {
+        const res = await api.get('/api/config')
+        const models = (Array.isArray(res.data.models) ? res.data.models : []).map((x) => x?.name || x)
+        setDhModels(models)
+        const pref = res.data.default_model || (models.length ? models[0] : '')
+        setSelectedDhModel(pref)
+      } catch { /* 静默 */ }
+    }
+    loadDhModels()
+    const onModelsUpdate = () => loadDhModels()
+    window.addEventListener('models-updated', onModelsUpdate)
+    return () => window.removeEventListener('models-updated', onModelsUpdate)
+  }, [])
+
   const generateScripts = async () => {
     if (!scriptForm.topic.trim()) {
       toast.error('请输入口播主题')
@@ -1337,34 +1355,6 @@ const fmtDaysLeft = (days) => {
         iconColor="from-violet-500 to-purple-600"
       />
 
-      {/* 今日额度条：本地版按每日次数限制（与中转站无关，仅防滥用） */}
-      {quota && (
-        <div
-          className={`flex flex-wrap items-center gap-3 px-4 py-2.5 rounded-xl border text-xs ${
-            quota.remaining_today > 5
-              ? 'bg-white border-gray-200 text-gray-600'
-              : 'bg-amber-50 border-amber-200 text-amber-700'
-          }`}
-        >
-          <span className="font-medium">
-            今日剩余生成次数：
-            <span
-              className={
-                quota.remaining_today > 5 ? 'text-violet-600 font-bold' : 'text-red-500 font-bold'
-              }
-            >
-              {quota.remaining_today}
-            </span>
-            {quota.daily_quota ? ` / ${quota.daily_quota} 次` : ''}
-          </span>
-          <span className="text-gray-400">AI 费用由你的中转站 Key 计费</span>
-          <span className="ml-auto text-[10px] text-gray-400">
-            每次生成消耗 1 次额度
-            {storage &&
-              ` · 我的存储 ${storage.size_mb}MB / ${storage.records} 条（保留 ${storage.retention_days} 天）`}
-          </span>
-        </div>
-      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* 左列：配置面板 */}
@@ -2609,12 +2599,6 @@ ${batchTexts
                         : '仅音频'}
                   </Badge>
                 </div>
-                {result.quota_remaining != null && (
-                  <div className="flex justify-between">
-                    <span>今日剩余：</span>
-                    <span className="font-medium text-violet-600">{result.quota_remaining} 次</span>
-                  </div>
-                )}
               </div>
               {/* 下载/播放按钮 */}
               <div className="flex gap-2 mt-3">
@@ -3564,6 +3548,26 @@ ${batchTexts
             <option value="活泼">活泼</option>
             <option value="煽情">煽情</option>
           </select>
+        </div>
+        <div className="mb-3">
+          <label className="block text-xs text-gray-500 mb-1">文案生成模型</label>
+          <select
+            value={selectedDhModel}
+            onChange={(e) => {
+              const v = e.target.value
+              setSelectedDhModel(v)
+              api.put('/api/model-prefs', { dh: v }).catch(() => {})
+            }}
+            className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs outline-none focus:border-violet-500 bg-white"
+          >
+            {dhModels.length === 0 && <option value="">默认（请先配置中转站 Key）</option>}
+            {dhModels.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </select>
+          <p className="text-[10px] text-gray-400 mt-1">选择你中转站的大模型生成口播文案，可自由切换</p>
         </div>
         <Button
           variant="primary"

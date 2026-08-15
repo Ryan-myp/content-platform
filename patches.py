@@ -315,41 +315,38 @@ def _patch_config_relay_base() -> int:
 
 
 def _patch_auth_relay_quota() -> int:
-    """common/auth：配置中转站 Key 的用户额度不限（按 token 计费）+ 资料返回 relay_configured。"""
+    """common/auth：本地免费版彻底取消次数限制（有中转站 token 即可随意使用）。"""
     path = os.path.join(CP_BACKEND, 'common', 'auth.py')
     if not os.path.exists(path):
         return 0
     src = open(path, encoding='utf-8').read()
     n = 0
-    # 1. consume_quota 放行
-    if 'row.get("relay_api_key")' not in src:
-        old = '    if row.get("role") == "admin":\n        return {"allowed": True, "remaining": 9999, "charged": False}\n    today = _today()'
-        new = ('    if row.get("role") == "admin":\n        return {"allowed": True, "remaining": 9999, "charged": False}\n'
-               '    # 模式 B：配置了中转站 Key 的用户按 token 计费，平台不限次数\n'
-               '    if row.get("relay_api_key"):\n'
-               '        return {"allowed": True, "remaining": 9999, "charged": False}\n'
-               '    today = _today()')
+    # 1. consume_quota：函数入口直接放行
+    if '有中转站 token 即可随意使用' not in src:
+        old = 'def consume_quota(user_id: str) -> dict:'
+        new = ('def consume_quota(user_id: str) -> dict:\n'
+               '    """本地免费版：无次数限制，用户有中转站 token 即可随意使用，计费在中转站。"""\n'
+               '    return {"allowed": True, "remaining": 9999, "charged": False}')
         if old in src:
             src = src.replace(old, new, 1)
             n += 1
-    # 2. get_quota_info 放行
+    # 2. get_quota_info：入口直接返回不限
     if '"relay_billed": True' not in src:
-        old = '    _maybe_send_expiry_notice(user_id)  # 惰性发送到期提醒（≤3 天，去重）\n    # 会员剩余天数（含到期日当天，用于前端到期提醒）'
-        new = ('    _maybe_send_expiry_notice(user_id)  # 惰性发送到期提醒（≤3 天，去重）\n'
-               '    # 模式 B：配置了中转站 Key 的用户按 token 计费，平台不限次数\n'
-               '    if profile.get("relay_configured"):\n'
-               '        return {\n'
-               '            "membership": "free", "membership_expires": None, "membership_days_left": None,\n'
-               '            "username": profile.get("username", ""), "role": profile.get("role", ""),\n'
-               '            "daily_quota": None, "bonus_quota": 0, "used_today": 0,\n'
-               '            "remaining_today": 9999, "total_usage": profile.get("total_usage", 0),\n'
-               '            "relay_billed": True,\n'
-               '        }\n'
-               '    # 会员剩余天数（含到期日当天，用于前端到期提醒）')
+        old = 'def get_quota_info(user_id: str) -> dict:'
+        new = ('def get_quota_info(user_id: str) -> dict:\n'
+               '    """本地免费版：无次数限制，返回固定不限额度。"""\n'
+               '    _profile = get_user_profile(user_id)\n'
+               '    return {\n'
+               '        "membership": "free", "membership_expires": None, "membership_days_left": None,\n'
+               '        "username": _profile.get("username", ""), "role": _profile.get("role", ""),\n'
+               '        "daily_quota": None, "bonus_quota": 0, "used_today": 0,\n'
+               '        "remaining_today": 9999, "total_usage": _profile.get("total_usage", 0),\n'
+               '        "relay_billed": True,\n'
+               '    }')
         if old in src:
             src = src.replace(old, new, 1)
             n += 1
-    # 3. get_user_profile 返回 relay_configured
+    # 3. get_user_profile 返回 relay_configured（前端判断用）
     if '"relay_configured": bool(row.get("relay_api_key"))' not in src:
         old = '        "created_at": row.get("created_at"),\n    }'
         new = '        "created_at": row.get("created_at"),\n        "relay_configured": bool(row.get("relay_api_key")),\n    }'
@@ -358,6 +355,103 @@ def _patch_auth_relay_quota() -> int:
             n += 1
     if n:
         open(path, 'w', encoding='utf-8').write(src)
+    return n
+
+
+
+def _patch_voice_dh_models() -> int:
+    """音频/数字人模型接线：配音用 audio 偏好、数字人文案用 dh 偏好；config 提供 resolve_feature_model。"""
+    n = 0
+    # 1. common/config.py resolve_feature_model 助手
+    p = os.path.join(CP_BACKEND, 'common', 'config.py')
+    if os.path.exists(p):
+        s = open(p, encoding='utf-8').read()
+        if 'def resolve_feature_model(' not in s:
+            helper = '\n\ndef resolve_feature_model(uid: str, feature: str, fallback: str = "") -> str:\n'
+            helper += '    """读取用户按功能选择的模型偏好（model_prefs:{uid} {feature}），未选择用 fallback。"""\n'
+            helper += '    if not uid:\n        return fallback\n'
+            helper += '    try:\n        from common.db import get_db_context\n\n'
+            helper += '        with get_db_context() as conn:\n'
+            helper += '            row = conn.execute("SELECT value FROM config WHERE key=?", (f"model_prefs:{uid}",)).fetchone()\n'
+            helper += '        if row and row["value"]:\n'
+            helper += '            prefs = json.loads(row["value"])\n'
+            helper += '            m = (prefs.get(feature) or "").strip()\n'
+            helper += '            if m:\n                return m\n'
+            helper += '    except Exception:\n        pass\n'
+            helper += '    return fallback\n'
+            s = s.rstrip() + helper
+            open(p, 'w', encoding='utf-8').write(s)
+            n += 1
+    # 2. voice_factory：TTS 用 audio 偏好
+    p = os.path.join(CP_BACKEND, 'voice_factory.py')
+    if os.path.exists(p):
+        s = open(p, encoding='utf-8').read()
+        if '"audio_model": _resolve_audio_model' not in s:
+            if '"user_id": uid,' not in s:
+                old_t = '        "template_id": template_id,\n        "project_id": project_id,\n    }'
+                new_t = '        "template_id": template_id,\n        "project_id": project_id,\n        "user_id": uid,\n    }'
+                if old_t in s:
+                    s = s.replace(old_t, new_t, 1)
+                    n += 1
+            if 'def _resolve_audio_model(' not in s:
+                old_t = 'def _resolve_voice_params(payload: dict) -> dict:'
+                new_t = ('def _resolve_audio_model(uid: str) -> str:\n'
+                         '    """读取用户选择的音频(TTS)模型（model_prefs:{uid} audio），未选择用标准 tts-1。"""\n'
+                         '    if not uid:\n        return "tts-1"\n'
+                         '    try:\n        from common.db import get_db_context\n\n'
+                         '        with get_db_context() as conn:\n'
+                         '            row = conn.execute("SELECT value FROM config WHERE key=?", (f"model_prefs:{uid}",)).fetchone()\n'
+                         '        if row and row["value"]:\n'
+                         '            prefs = json.loads(row["value"])\n'
+                         '            m = (prefs.get("audio") or "").strip()\n'
+                         '            if m:\n                return m\n'
+                         '    except Exception:\n        pass\n'
+                         '    return "tts-1"\n\n\n'
+                         'def _resolve_voice_params(payload: dict) -> dict:')
+                if old_t in s:
+                    s = s.replace(old_t, new_t, 1)
+                    n += 1
+            if '"audio_model": _resolve_audio_model(payload.get("user_id", ""))' not in s:
+                old_t = '        "format": fmt, "emotion": emotion, "tts_voice": tts_voice, "tts_speed": tts_speed,\n    }'
+                new_t = '        "format": fmt, "emotion": emotion, "tts_voice": tts_voice, "tts_speed": tts_speed,\n        "audio_model": _resolve_audio_model(payload.get("user_id", "")),\n    }'
+                if old_t in s:
+                    s = s.replace(old_t, new_t, 1)
+                    n += 1
+            if 'params.get("audio_model", "tts-1")' not in s:
+                old_t = 'data = await asyncio.to_thread(_tts_one, seg, tts_voice, tts_speed, pitch, emotion)'
+                new_t = 'data = await asyncio.to_thread(_tts_one, seg, tts_voice, tts_speed, pitch, emotion, params.get("audio_model", "tts-1"))'
+                if old_t in s:
+                    s = s.replace(old_t, new_t, 1)
+                    n += 1
+            if 'json={"model": model, "input": text, "voice": voice, "speed": speed}' not in s:
+                old_t = 'json={"model": "tts-1", "input": text, "voice": voice, "speed": speed},'
+                new_t = 'json={"model": model, "input": text, "voice": voice, "speed": speed},'
+                if old_t in s:
+                    s = s.replace(old_t, new_t, 1)
+                    n += 1
+            if 'model: str = "tts-1"' not in s:
+                old_t = 'def _tts_one(text: str, voice: str, speed: float, pitch: int = 0, emotion: str = "")'
+                new_t = 'def _tts_one(text: str, voice: str, speed: float, pitch: int = 0, emotion: str = "", model: str = "tts-1")'
+                if old_t in s:
+                    s = s.replace(old_t, new_t, 1)
+                    n += 1
+            open(p, 'w', encoding='utf-8').write(s)
+    # 3. digital_human：文案生成用 dh 偏好
+    p = os.path.join(CP_BACKEND, 'digital_human.py')
+    if os.path.exists(p):
+        s = open(p, encoding='utf-8').read()
+        if 'resolve_feature_model(_uid, "dh", "")' not in s:
+            old_t = '        raw = call_llm(system, user_prompt, max_tokens=1500, temperature=0.9, timeout=60)'
+            new_t = ('        from common.config import resolve_feature_model\n\n'
+                     '        _uid = current_user.get("user_id", "") if isinstance(current_user, dict) else ""\n'
+                     '        raw = call_llm(\n'
+                     '            system, user_prompt, max_tokens=1500, temperature=0.9, timeout=60,\n'
+                     '            model=resolve_feature_model(_uid, "dh", ""),\n'
+                     '        )')
+            if old_t in s:
+                s = s.replace(old_t, new_t, 1)
+                open(p, 'w', encoding='utf-8').write(s)
+                n += 1
     return n
 
 
@@ -700,6 +794,7 @@ def apply_all() -> int:
     total += _patch_auth_stale_token()
     total += _patch_video_templates_free()
     total += _patch_template_store_free()
+    total += _patch_voice_dh_models()
     return total
 
 

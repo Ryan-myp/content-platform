@@ -229,7 +229,7 @@ def _tts_cosyvoice(text: str, voice: str, speed: float) -> bytes:
     raise RuntimeError(f"CosyVoice 引擎返回 {resp.status_code}: {resp.text[:200]}")
 
 
-def _tts_one(text: str, voice: str, speed: float, pitch: int = 0, emotion: str = "") -> bytes:  # noqa: C901 — 多通道降级逻辑，复杂度可控
+def _tts_one(text: str, voice: str, speed: float, pitch: int = 0, emotion: str = "", model: str = "tts-1") -> bytes:  # noqa: C901 — 多通道降级逻辑，复杂度可控
     """单段 TTS 合成，返回 mp3/wav 字节。
 
     AI 克隆音色（中文名）优先走 CosyVoice 本地引擎（高质量自然音色，不依赖外网）；
@@ -290,7 +290,7 @@ def _tts_one(text: str, voice: str, speed: float, pitch: int = 0, emotion: str =
         resp = requests.post(
             f"{AGNES_API_BASE}/audio/speech",
             headers={"Authorization": f"Bearer {resolve_api_key()}", "Content-Type": "application/json"},
-            json={"model": "tts-1", "input": text, "voice": voice, "speed": speed},
+            json={"model": model, "input": text, "voice": voice, "speed": speed},
             timeout=_TTS_RELAY_TIMEOUT,
         )
         if resp.status_code == 200:
@@ -492,6 +492,25 @@ def _prepare_voice_params_simple(request_data: dict) -> dict:
     }
 
 
+def _resolve_audio_model(uid: str) -> str:
+    """读取用户选择的音频(TTS)模型（model_prefs:{uid} audio），未选择用标准 tts-1。"""
+    if not uid:
+        return "tts-1"
+    try:
+        from common.db import get_db_context
+
+        with get_db_context() as conn:
+            row = conn.execute("SELECT value FROM config WHERE key=?", (f"model_prefs:{uid}",)).fetchone()
+        if row and row["value"]:
+            prefs = json.loads(row["value"])
+            m = (prefs.get("audio") or "").strip()
+            if m:
+                return m
+    except Exception:
+        pass
+    return "tts-1"
+
+
 def _resolve_voice_params(payload: dict) -> dict:
     """解析并校验 TTS 参数，返回 {text, scene, voice, speed, pitch, format, emotion, tts_voice, tts_speed}。"""
     text = (payload.get("text") or "").strip()
@@ -517,6 +536,7 @@ def _resolve_voice_params(payload: dict) -> dict:
     return {
         "text": text, "scene": scene, "voice": voice, "speed": speed, "pitch": pitch,
         "format": fmt, "emotion": emotion, "tts_voice": tts_voice, "tts_speed": tts_speed,
+        "audio_model": _resolve_audio_model(payload.get("user_id", "")),
     }
 
 
@@ -538,7 +558,7 @@ async def _synthesize_audio(params: dict, progress: Callable | None) -> dict:
     seg_files, seg_durations = [], []
     for i, seg in enumerate(segments):
         _report(10 + int(i * 70 / len(segments)), f"正在合成第 {i + 1}/{len(segments)} 段…")
-        data = await asyncio.to_thread(_tts_one, seg, tts_voice, tts_speed, pitch, emotion)
+        data = await asyncio.to_thread(_tts_one, seg, tts_voice, tts_speed, pitch, emotion, params.get("audio_model", "tts-1"))
         seg_path = os.path.join(tmp_dir, f"seg_{i}.mp3")
         with open(seg_path, "wb") as f:
             f.write(data)
@@ -675,6 +695,7 @@ async def generate_voice(
         "emotion": emotion,
         "template_id": template_id,
         "project_id": project_id,
+        "user_id": uid,
     }
     if sync:
         return await _voice_generate_worker(payload)

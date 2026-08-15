@@ -461,23 +461,8 @@ def change_password(user_id: str, old_password: str, new_password: str) -> None:
 
 
 def consume_quota(user_id: str) -> dict:
-    """额度扣减：返回 {allowed, remaining, charged}。跨天自动重置。
-
-    charged 表示本次是否实际扣减（admin/vip 不限量，不扣减）。
-    失败退费依赖该标记：未真实扣费的任务/请求不应触发退费。
-    """
-    if not user_id:
-        return {"allowed": True, "remaining": 9999, "charged": False}
-    row = _load_user(user_id)
-    if not row:
-        return {"allowed": True, "remaining": 9999, "charged": False}
-    # 管理员不受额度限制
-    if row.get("role") == "admin":
-        return {"allowed": True, "remaining": 9999, "charged": False}
-    # 模式 B：配置了中转站 Key 的用户按 token 计费，平台不限次数（无免费额度概念）
-    if row.get("relay_api_key"):
-        return {"allowed": True, "remaining": 9999, "charged": False}
-    today = _today()
+    """额度（本地免费版：不设次数限制，用户有中转站 token 即可随意使用，计费在中转站）。"""
+    return {"allowed": True, "remaining": 9999, "charged": False}
     membership = _effective_membership(row)
     daily_quota = row.get("daily_quota") or MEMBERSHIP_QUOTA.get(membership, 30)
     # 会员无限制
@@ -561,22 +546,20 @@ def get_quota_info(user_id: str) -> dict:
     """查询当前额度信息（不扣减），含会员到期提醒数据。"""
     profile = get_user_profile(user_id)
     _maybe_send_expiry_notice(user_id)  # 惰性发送到期提醒（≤3 天，去重）
-    # 模式 B：配置了中转站 Key 的用户按 token 计费，平台不限次数
-    if profile.get("relay_configured"):
-        return {
-            "membership": "free",
-            "membership_expires": None,
-            "membership_days_left": None,
-            "username": profile.get("username", ""),
-            "role": profile.get("role", ""),
-            "daily_quota": None,
-            "bonus_quota": 0,
-            "used_today": 0,
-            "remaining_today": 9999,
-            "total_usage": profile.get("total_usage", 0),
-            "relay_billed": True,
-        }
-    # 会员剩余天数（含到期日当天，用于前端到期提醒）
+    # 本地免费版：无次数限制（有中转站 token 即可随意使用）
+    return {
+        "membership": "free",
+        "membership_expires": None,
+        "membership_days_left": None,
+        "username": profile.get("username", ""),
+        "role": profile.get("role", ""),
+        "daily_quota": None,
+        "bonus_quota": 0,
+        "used_today": 0,
+        "remaining_today": 9999,
+        "total_usage": profile.get("total_usage", 0),
+        "relay_billed": True,
+    }
     exp = profile.get("membership_expires")
     days_left = None
     if exp and profile["membership"] != "free":
