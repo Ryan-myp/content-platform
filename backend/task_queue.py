@@ -604,6 +604,9 @@ def _fetch_pending(conn, now_iso: str):
     ).fetchall()
 
 
+_last_master_err = 0.0
+
+
 def _master_loop() -> None:
     """master 调度：扫描 pending 任务 → 原子抢占 → 按 worker 池入队；
     周期性执行看门狗与历史清理。"""
@@ -639,7 +642,20 @@ def _master_loop() -> None:
                 last_housekeep = now
             time.sleep(0.5 if claimed else 2.0)
         except Exception:
-            logger.exception("task master loop error")
+            # 自愈：任务表缺列/结构过期时重新迁移（旧库升级、启动期 ALTER 被锁跳过等场景），
+            # 避免 master 循环每秒崩溃刷屏；错误日志限流 30s 一次
+            try:
+                _c = get_db()
+                try:
+                    _ensure_table(_c)
+                finally:
+                    _c.close()
+            except Exception:
+                pass
+            global _last_master_err
+            if time.time() - _last_master_err > 30:
+                logger.exception("task master loop error")
+                _last_master_err = time.time()
             time.sleep(2)
 
 

@@ -732,13 +732,42 @@ def _patch_no_hardcoded_models() -> int:
 
 
 def _patch_task_queue_relay() -> int:
-    """task_queue：后台任务恢复用户中转站 key（ContextVar 不在请求外传递）。"""
+    """task_queue：后台任务恢复用户中转站 key + master 循环缺列自愈。"""
     path = os.path.join(CP_BACKEND, 'task_queue.py')
     if not os.path.exists(path):
         return 0
     src = open(path, encoding='utf-8').read()
+    n = 0
+    # master 循环自愈：缺列时重新迁移 + 错误日志限流
+    if 'task master loop error' in src and '_last_master_err' not in src:
+        old_t = '''        except Exception:
+            logger.exception("task master loop error")
+            time.sleep(2)'''
+        new_t = '''        except Exception:
+            # 自愈：任务表缺列/结构过期时重新迁移（旧库升级、启动期 ALTER 被锁跳过等场景），
+            # 避免 master 循环每秒崩溃刷屏；错误日志限流 30s 一次
+            try:
+                _c = get_db()
+                try:
+                    _ensure_table(_c)
+                finally:
+                    _c.close()
+            except Exception:
+                pass
+            global _last_master_err
+            if time.time() - _last_master_err > 30:
+                logger.exception("task master loop error")
+                _last_master_err = time.time()
+            time.sleep(2)'''
+        if old_t in src:
+            src = src.replace(old_t, new_t, 1)
+            n += 1
+            if '_last_master_err = 0.0' not in src:
+                src = src.replace('def _master_loop() -> None:', '_last_master_err = 0.0\n\n\ndef _master_loop() -> None:', 1)
     if '后台任务恢复用户的中转站 key' in src:
-        return 0
+        if n:
+            open(path, 'w', encoding='utf-8').write(src)
+        return n
     old = '''    ctx = {"username": row["created_by"] or "", "user_id": row["user_id"] or "", "role": row["role"] or ""}
     try:
         result = fn(task_id, payload, lambda p, s: _update_progress(task_id, p, s), ctx)'''
