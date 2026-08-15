@@ -147,7 +147,10 @@ def load_config() -> dict:
             elif k == "video_model":
                 VIDEO_MODEL = v.strip()
     except Exception as e:
-        logger.warning(f"load_config failed (使用环境变量默认值): {e}")
+        # 启动早期（init_schema 之前）config 表尚不存在属正常现象，静默跳过；
+        # 仅对真实错误（权限/磁盘等）告警，避免误导用户以为启动失败
+        if "no such table" not in str(e):
+            logger.warning(f"load_config failed (使用环境变量默认值): {e}")
     return {
         "agnes_api_key": AGNES_API_KEY,
         "agnes_api_base": AGNES_API_BASE,
