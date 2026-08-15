@@ -51,3 +51,24 @@ python3 content-platform/sync_from_main.py --frontend  # 同步后端 + 前端�
 
 - 所有内容本地运行，无会员/分享/邀请等商业化 UI
 - AI 功能使用用户填写的中转站 Key（URL 平台写死），平台通过中转站 token 盈利
+
+## 常见问题
+
+### 端口被占用 / 想自定义端口
+```bash
+# 自定义端口：--port=前端 --backend-port=后端
+npx @ryan-myp/code-platform web --port 8080 --backend-port 9000
+
+# 端口被占用时自动换可用端口（无需手动处理）
+```
+
+### 更新 / 重装到最新版
+```bash
+rm -rf ~/.cache/code-platform ~/.npm/_npx   # 清缓存
+npx @ryan-myp/code-platform web              # 重新下载运行
+```
+
+### 完全卸载
+```bash
+rm -rf ~/.cache/code-platform ~/.npm/_npx   # 清全部本地数据
+```
