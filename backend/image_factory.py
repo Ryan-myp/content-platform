@@ -1331,6 +1331,28 @@ async def render_template_image(template: dict, overrides: dict | None = None,  
         """背景：背景图（cover 铺满 + 模糊 + 暗化）> 渐变简写 > 纯色。"""
         return await _make_template_bg(template, overrides, width, height)
 
+    async def _render_once(batch_url: str) -> Image.Image:
+        """按模板渲染一张（batch_url 为批量模式下该轮主槽图片，单张模式传空）。"""
+        canvas = await _make_bg()
+        draw = ImageDraw.Draw(canvas)
+        for layer in template.get("layers", []):
+            await _render_layer(canvas, draw, layer, overrides, batch_url, slot_map, main_slot_key)
+            draw = ImageDraw.Draw(canvas)
+        return canvas
+
+    _report(15, "正在渲染模板…")
+    if batch_urls:
+        total = len(batch_urls)
+        results = []
+        for i, u in enumerate(batch_urls):
+            _report(15 + int(i * 75 / total), f"正在处理第 {i + 1}/{total} 张…")
+            results.append(await _render_once(u))
+        _report(100, "模板渲染完成")
+        return results
+    result = [await _render_once("")]
+    _report(100, "模板渲染完成")
+    return result
+
 def _render_rect_layer(canvas, draw, layer, overrides) -> None:
     """渲染 rect 图层。"""
     # 圆角矩形底（卡片/横幅/按钮底）：支持渐变填充/描边边框/旋转
@@ -3261,125 +3283,3 @@ register_handler("image_i2i", _image_i2i_handler, user_limit=2)
 register_handler("image_template", _image_template_handler, user_limit=2)
 register_handler("image_tryon", _image_tryon_handler, user_limit=2)
 register_handler("image_turntable", _image_turntable_handler, user_limit=1, pool="long")
-
-
-def _render_rect_layer(layer: dict, canvas, draw, width: int, height: int) -> None:
-    """渲染圆角矩形图层（卡片/横幅/按钮底）。"""
-    from PIL import ImageDraw
-    
-    x = int(layer.get("x", 0))
-    y = int(layer.get("y", 0))
-    w = int(layer.get("width", 200))
-    h = int(layer.get("height", 60))
-    radius = int(layer.get("radius", 16))
-    fill = layer.get("fill", "#FFFFFF")
-    opacity = float(layer.get("opacity", 1.0))
-    rotation = float(layer.get("rotation", 0) or 0)
-    border_w = int(layer.get("border_width", 0) or 0)
-    border_color = layer.get("border_color", fill)
-    
-    overlay = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    od = ImageDraw.Draw(overlay)
-    
-    # 渐变填充
-    if isinstance(fill, str) and "→" in fill:
-        from image_edit_engine import make_gradient
-        top_hex, bottom_hex = (fill.split("→") + ["#FFFFFF"])[:2]
-        grad = make_gradient(w, h, top_hex.strip(), bottom_hex.strip()).convert("RGBA")
-        overlay.paste(grad, (0, 0), _rounded_mask(w, h, radius))
-    else:
-        od.rounded_rectangle([0, 0, w - 1, h - 1], radius=radius, fill=fill)
-    
-    # 边框
-    if border_w > 0:
-        od.rounded_rectangle([0, 0, w - 1, h - 1], radius=radius, outline=border_color, width=border_w)
-    
-    # 透明度
-    if opacity < 1.0:
-        overlay.putalpha(overlay.getchannel("A").point(lambda a, op=opacity: int(a * op)))
-    
-    # 旋转
-    if rotation:
-        overlay = overlay.rotate(-rotation, expand=True, resample=Image.BICUBIC)
-        nw, nh = overlay.size
-        canvas.paste(overlay, (int(x + w / 2 - nw / 2), int(y + h / 2 - nh / 2)), overlay)
-    else:
-        canvas.paste(overlay, (x, y), overlay)
-    
-    return ImageDraw.Draw(canvas)
-
-
-def _render_circle_layer(layer: dict, canvas) -> None:
-    """渲染圆形图层（光斑/装饰环/徽章底）。"""
-    from PIL import ImageDraw
-    
-    cx = int(layer.get("x", 0))
-    cy = int(layer.get("y", 0))
-    radius = max(1, int(layer.get("radius", 50)))
-    fill = layer.get("fill", "#FFFFFF")
-    opacity = float(layer.get("opacity", 1.0))
-    rotation = float(layer.get("rotation", 0) or 0)
-    border_w = int(layer.get("border_width", 0) or 0)
-    border_color = layer.get("border_color", fill)
-    pad = max(border_w, 2)
-    d = radius * 2 + pad * 2
-    
-    overlay = Image.new("RGBA", (d, d), (0, 0, 0, 0))
-    od = ImageDraw.Draw(overlay)
-    box = [pad, pad, d - 1 - pad, d - 1 - pad]
-    
-    # 渐变填充
-    if fill and isinstance(fill, str) and "→" in fill:
-        from image_edit_engine import make_gradient
-        top_hex, bottom_hex = (fill.split("→") + ["#FFFFFF"])[:2]
-        grad = make_gradient(d, d, top_hex.strip(), bottom_hex.strip()).convert("RGBA")
-        mask = Image.new("L", (d, d), 0)
-        ImageDraw.Draw(mask).ellipse(box, fill=255)
-        overlay.paste(grad, (0, 0), mask)
-    elif fill:
-        od.ellipse(box, fill=fill)
-    
-    # 边框
-    if border_w > 0:
-        od.ellipse([pad, pad, d - 1 - pad, d - 1 - pad], outline=border_color, width=border_w)
-    
-    # 透明度
-    if opacity < 1.0:
-        overlay.putalpha(overlay.getchannel("A").point(lambda a, op=opacity: int(a * op)))
-    
-    # 旋转
-    if rotation:
-        overlay = overlay.rotate(-rotation, expand=True, resample=Image.BICUBIC)
-    
-    canvas.paste(overlay, (cx - overlay.width // 2, cy - overlay.height // 2), overlay)
-
-
-def _render_line_layer(layer: dict, canvas) -> None:
-    """渲染直线/分隔线。"""
-    from PIL import ImageDraw
-    import math
-    
-    x1 = int(layer.get("x1", layer.get("x", 0)))
-    y1 = int(layer.get("y1", layer.get("y", 0)))
-    x2 = int(layer.get("x2", 0))
-    y2 = int(layer.get("y2", 0))
-    
-    # 角度计算
-    if layer.get("length"):
-        angle = math.radians(float(layer.get("angle", 0) or 0))
-        length = int(layer.get("length", 100))
-        x2 = x1 + int(length * math.cos(angle))
-        y2 = y1 + int(length * math.sin(angle))
-    
-    color = layer.get("color", "#DDDDDD")
-    lw = max(1, int(layer.get("width", 2) or 2))
-    opacity = float(layer.get("opacity", 1.0))
-    
-    draw = ImageDraw.Draw(canvas)
-    if opacity < 1.0:
-        overlay = Image.new("RGBA", (canvas.width, canvas.height), (0, 0, 0, 0))
-        ImageDraw.Draw(overlay).line([x1, y1, x2, y2], fill=color, width=lw)
-        overlay.putalpha(overlay.getchannel("A").point(lambda a, op=opacity: int(a * op)))
-        canvas.paste(overlay, (0, 0), overlay)
-    else:
-        draw.line([x1, y1, x2, y2], fill=color, width=lw)

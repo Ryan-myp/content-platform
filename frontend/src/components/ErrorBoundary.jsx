@@ -1,7 +1,15 @@
 import React from 'react'
-import { AlertTriangle, RefreshCw } from 'lucide-react'
+import { AlertTriangle, RefreshCw, Home } from 'lucide-react'
+import { useLocation, useNavigate } from 'react-router-dom'
 
-export default class ErrorBoundary extends React.Component {
+/**
+ * 页面级错误边界（本地免费版）
+ *
+ * 关键修复：错误态必须随路由切换自动重置——
+ * 否则某页渲染抛错后，边界一直停在错误页，用户点其他菜单"没反应"，只能强刷。
+ * 通过 key={location.pathname} 让边界随路由重建（切页即恢复）。
+ */
+class ErrorBoundaryClass extends React.Component {
   constructor(props) {
     super(props)
     this.state = { hasError: false, error: null }
@@ -28,7 +36,7 @@ export default class ErrorBoundary extends React.Component {
           </div>
           <h2 className="text-xl font-bold text-gray-900 mb-2">页面出现异常</h2>
           <p className="text-sm text-gray-500 max-w-md mb-6">
-            抱歉，页面发生了未知错误。您可以尝试刷新页面，或返回上一页继续操作。
+            该页面加载出错，但其他功能不受影响。您可以重试、返回上一页或直接回首页继续使用。
           </p>
           {this.state.error?.message && (
             <pre className="text-xs text-red-500 bg-red-50 border border-red-100 rounded-lg px-4 py-2 mb-4 max-w-md overflow-auto">
@@ -49,10 +57,26 @@ export default class ErrorBoundary extends React.Component {
             >
               返回上一页
             </button>
+            <button
+              onClick={() => this.props.navigate?.('/home')}
+              className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
+            >
+              <Home className="w-4 h-4" />
+              回首页
+            </button>
           </div>
         </div>
       )
     }
     return this.props.children
   }
+}
+
+/**
+ * 路由感知包装：路径变化 → 用 key 重建边界（错误态自动清除，导航不再卡死）
+ */
+export default function ErrorBoundary(props) {
+  const location = useLocation()
+  const navigate = useNavigate()
+  return <ErrorBoundaryClass key={location.pathname} {...props} navigate={navigate} />
 }

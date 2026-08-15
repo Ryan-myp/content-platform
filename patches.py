@@ -165,6 +165,69 @@ def _patch_stock_reports_order() -> int:
     return 1
 
 
+def _patch_image_factory_render() -> int:
+    """image_factory：校验 render_template_image 主体完整（_render_once）。
+
+    历史 bug：重构拆分图层函数时误删主函数体 + 底部残留旧版重复函数，
+    导致 render_template_image 恒返回 None、视频模板预览/封面 500。
+    若主仓库同步回的版本再次出现此问题，此处自动修复。
+    """
+    path = os.path.join(CP_BACKEND, 'image_factory.py')
+    if not os.path.exists(path):
+        return 0
+    src = open(path, encoding='utf-8').read()
+    n = 0
+    # 1. 主函数体缺失 → 补回 _render_once + 渲染/返回逻辑
+    if 'async def _render_once(batch_url: str)' not in src:
+        old = (
+            '    async def _make_bg() -> Image.Image:\n'
+            '        """背景：背景图（cover 铺满 + 模糊 + 暗化）> 渐变简写 > 纯色。"""\n'
+            '        return await _make_template_bg(template, overrides, width, height)\n'
+            '\n'
+            'def _render_rect_layer(canvas, draw, layer, overrides) -> None:'
+        )
+        new = (
+            '    async def _make_bg() -> Image.Image:\n'
+            '        """背景：背景图（cover 铺满 + 模糊 + 暗化）> 渐变简写 > 纯色。"""\n'
+            '        return await _make_template_bg(template, overrides, width, height)\n'
+            '\n'
+            '    async def _render_once(batch_url: str) -> Image.Image:\n'
+            '        """按模板渲染一张（batch_url 为批量模式下该轮主槽图片，单张模式传空）。"""\n'
+            '        canvas = await _make_bg()\n'
+            '        draw = ImageDraw.Draw(canvas)\n'
+            '        for layer in template.get("layers", []):\n'
+            '            await _render_layer(canvas, draw, layer, overrides, batch_url, slot_map, main_slot_key)\n'
+            '            draw = ImageDraw.Draw(canvas)\n'
+            '        return canvas\n'
+            '\n'
+            '    _report(15, "正在渲染模板…")\n'
+            '    if batch_urls:\n'
+            '        total = len(batch_urls)\n'
+            '        results = []\n'
+            '        for i, u in enumerate(batch_urls):\n'
+            '            _report(15 + int(i * 75 / total), f"正在处理第 {i + 1}/{total} 张…")\n'
+            '            results.append(await _render_once(u))\n'
+            '        _report(100, "模板渲染完成")\n'
+            '        return results\n'
+            '    result = [await _render_once("")]\n'
+            '    _report(100, "模板渲染完成")\n'
+            '    return result\n'
+            '\n'
+            'def _render_rect_layer(canvas, draw, layer, overrides) -> None:'
+        )
+        if old in src:
+            src = src.replace(old, new, 1)
+            n += 1
+    # 2. 底部旧版重复函数 → 删除（防止遮蔽新版签名）
+    marker = '\n\ndef _render_rect_layer(layer: dict, canvas, draw, width: int, height: int) -> None:'
+    if marker in src:
+        src = src[:src.index(marker)].rstrip() + '\n'
+        n += 1
+    if n:
+        open(path, 'w', encoding='utf-8').write(src)
+    return n
+
+
 def apply_all() -> int:
     """应用全部定制补丁，返回补丁数。"""
     total = 0
@@ -174,6 +237,7 @@ def apply_all() -> int:
     total += _patch_task_queue()
     total += _patch_short_drama()
     total += _patch_stock_reports_order()
+    total += _patch_image_factory_render()
     return total
 
 

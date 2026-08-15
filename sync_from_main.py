@@ -125,6 +125,7 @@ CUSTOM_FRONTEND_FILES = {
     'pages/NotificationsPage.jsx',
     'pages/StockAnalysisPage.jsx',
     'components/AccessGuard.jsx',
+    'components/ErrorBoundary.jsx',
     'components/CommandPalette.jsx',
     'components/OnboardingTour.jsx',
     'components/FloatingAssistant.jsx',
