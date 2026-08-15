@@ -106,7 +106,7 @@ export default function ShortDramaPage() {
       toast.error('复制失败，请手动选择复制')
     }
   }
-  const [mode, setMode] = useState('material') // material | avatar
+  const [mode, setMode] = useState('illust') // material=素材 | illust=漫剧(默认,角色一致) | avatar=数字人
   const [avatarId, setAvatarId] = useState('business-female')
   const [dhEngine, setDhEngine] = useState('2d')
   const [scenesJson, setScenesJson] = useState('')
@@ -723,8 +723,9 @@ export default function ShortDramaPage() {
                 <div className="flex items-center gap-2">
                   <Film className="w-5 h-5 text-violet-600" />
                   <span className="font-medium text-gray-800">素材模式</span>
+                  <span className="text-[10px] text-gray-400 bg-gray-100 rounded-full px-1.5 py-0.5">快速</span>
                 </div>
-                <p className="mt-1 text-xs text-gray-500">AI 按关键词匹配真实视频素材（Pexels/本地）+ 配音字幕，支持 10 分钟长剧。素材为真实拍摄，无法保证同一演员，追求角色一致请用 AI 插画模式</p>
+                <p className="mt-1 text-xs text-gray-500">按关键词匹配真实视频素材（Pexels/本地），速度快适合长剧。画面与剧情关联弱、角色不固定，追求专业画质请用漫剧模式</p>
               </button>
               <button
                 onClick={() => setMode('illust')}
@@ -734,9 +735,10 @@ export default function ShortDramaPage() {
               >
                 <div className="flex items-center gap-2">
                   <Palette className="w-5 h-5 text-violet-600" />
-                  <span className="font-medium text-gray-800">AI 插画模式</span>
+                  <span className="font-medium text-gray-800">漫剧模式（推荐）</span>
+                  <span className="text-[10px] text-violet-500 bg-violet-100 rounded-full px-1.5 py-0.5">专业画质</span>
                 </div>
-                <p className="mt-1 text-xs text-gray-500">AI 逐镜绘制电影感分镜插画，角色一致性（A 出场即锁定，之后每处出场保持同脸同装），适合动漫/系列内容</p>
+                <p className="mt-1 text-xs text-gray-500">对标红果漫剧：先为每个角色生成定妆立绘（全剧同脸同装），每镜按台词画面描述绘制电影感分镜插画 + 镜头运镜，画面与剧情强匹配，适合系列连载</p>
               </button>
               <button
                 onClick={() => setMode('avatar')}
