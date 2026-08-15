@@ -583,19 +583,25 @@ async def _image_t2i_worker(payload: dict, progress: Callable | None = None) -> 
             if "data" in data and len(data["data"]) > 0:
                 for item in data["data"]:
                     image_url = item.get("url")
+                    b64 = item.get("b64_json")
                     if image_url:
                         img_resp = await asyncio.to_thread(requests.get, image_url, timeout=60)
                         img = Image.open(io.BytesIO(img_resp.content))
-                        filename = save_image(img)
-                        art_id = _save_artifact(filename, project_id, prompt, {"size": size_str, "model": model})
-                        results.append(
-                            {
-                                "id": filename,
-                                "artifact_id": art_id,
-                                "url": f"/api/image-factory/images/{filename}",
-                                "prompt": prompt,
-                            }
-                        )
+                    elif b64:
+                        img = Image.open(io.BytesIO(base64.b64decode(b64)))
+                    else:
+                        results.append({"error": "生成失败：接口返回缺少图片数据（url/b64_json）", "prompt": prompt})
+                        continue
+                    filename = save_image(img)
+                    art_id = _save_artifact(filename, project_id, prompt, {"size": size_str, "model": model})
+                    results.append(
+                        {
+                            "id": filename,
+                            "artifact_id": art_id,
+                            "url": f"/api/image-factory/images/{filename}",
+                            "prompt": prompt,
+                        }
+                    )
             else:
                 results.append({"error": f"生成失败：{data}", "prompt": prompt})
         except Exception as e:

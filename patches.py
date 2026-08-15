@@ -748,6 +748,9 @@ def _patch_no_hardcoded_models() -> int:
          '    from common.config import require_model\n\n    body = {\n        "model": require_model(payload.get("model") or None, "视频"),'),
         # stats api_configured 按用户中转站 Key 判断（AGNES_API_KEY 全局已置空）
         ('image_factory.py',
+         'image_url = item.get("url")\n                    if image_url:\n                        img_resp = await asyncio.to_thread(requests.get, image_url, timeout=60)\n                        img = Image.open(io.BytesIO(img_resp.content))\n                        filename = save_image(img)\n                        art_id = _save_artifact(filename, project_id, prompt, {"size": size_str, "model": model})',
+         'image_url = item.get("url")\n                    b64 = item.get("b64_json")\n                    if image_url:\n                        img_resp = await asyncio.to_thread(requests.get, image_url, timeout=60)\n                        img = Image.open(io.BytesIO(img_resp.content))\n                    elif b64:\n                        img = Image.open(io.BytesIO(base64.b64decode(b64)))\n                    else:\n                        results.append({"error": "生成失败：接口返回缺少图片数据（url/b64_json）", "prompt": prompt})\n                        continue\n                    filename = save_image(img)\n                    art_id = _save_artifact(filename, project_id, prompt, {"size": size_str, "model": model})'),
+        ('image_factory.py',
          '    return {\n        "total_images": len(files),\n        "total_templates": len(templates),\n        "image_dir": IMAGE_DIR,\n        "api_configured": bool(AGNES_API_KEY),\n    }',
          '    return {\n        "total_images": len(files),\n        "total_templates": len(templates),\n        "image_dir": IMAGE_DIR,\n        "api_configured": bool(resolve_api_key()),\n    }'),
         ('music_factory.py',

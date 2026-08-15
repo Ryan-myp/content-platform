@@ -1151,7 +1151,7 @@ export default function ImageFactoryPage() {
         } else if (success.length > 0) {
           toast.success(`成功生成 ${success.length} 张图片`)
         } else {
-          setGenerationError('生成失败，请检查 API Key 配置')
+          setGenerationError('生成失败，请查看上方错误详情或重试')
         }
         setGenerating(false)
         fetchImages()
@@ -1375,7 +1375,7 @@ export default function ImageFactoryPage() {
           toast.success('图生图完成')
           fetchImages()
         } else {
-          toast.error('生成失败，请检查 API Key 配置')
+          toast.error('生成失败，请查看上方错误详情或重试')
         }
         setImg2imgBusy(false)
       },
