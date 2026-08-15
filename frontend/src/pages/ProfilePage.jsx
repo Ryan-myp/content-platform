@@ -61,6 +61,7 @@ export default function ProfilePage({ user }) {
         ? `模型列表已从中转站同步（${res.data.models} 个），各创作页可自由切换模型`
         : 'Key 已保存，但模型列表同步失败，可重新保存重试'
       toast.success(hint, 5000)
+      window.dispatchEvent(new CustomEvent('models-updated'))
     } catch (e) {
       toast.error(e.message || 'Key 保存失败，请确认是本站签发的中转站 Key')
     } finally {
@@ -92,6 +93,7 @@ export default function ProfilePage({ user }) {
       setRelayMasked('')
       setRelayModels(0)
       toast.success('已清除中转站 Key 与模型列表')
+      window.dispatchEvent(new CustomEvent('models-updated'))
     } catch (e) {
       toast.error(e.message || '清除失败')
     }

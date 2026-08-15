@@ -852,7 +852,7 @@ export default function ImageFactoryPage() {
   // 可用模型列表（含中转站导入的模型），供图片生成切换
   const [modelOptions, setModelOptions] = useState([])
   const [selectedModel, setSelectedModel] = useState('')
-  const [imageModelName, setImageModelName] = useState('系统配置')
+  const [imageModelName, setImageModelName] = useState('默认')
   const [templates, setTemplates] = useState([])
   const [stats, setStats] = useState({ total_images: 0, total_templates: 0, api_configured: false })
   const [enhancing, setEnhancing] = useState(false) // v20：AI 润色提示词
@@ -988,7 +988,7 @@ export default function ImageFactoryPage() {
       setModelOptions(models)
       const pref = res.data.image_model || (models.length ? models[0].name : '')
       setSelectedModel(pref)
-      setImageModelName(pref || '系统配置')
+      setImageModelName(pref || '默认')
     } catch { /* 静默 */ }
   }, [])
 
@@ -1035,6 +1035,9 @@ export default function ImageFactoryPage() {
     fetchImages()
     loadModels()
     fetchTemplates()
+    const onModelsUpdate = () => loadModels()
+    window.addEventListener('models-updated', onModelsUpdate)
+    return () => window.removeEventListener('models-updated', onModelsUpdate)
   }, [fetchStats, fetchImages, fetchTemplates])
 
   // 3D 自动旋转
@@ -1836,7 +1839,7 @@ export default function ImageFactoryPage() {
       icon: LayoutTemplate,
       color: 'from-blue-500 to-cyan-500',
     },
-    { label: '模型版本', value: 'agnes-2.1', icon: Sparkles, color: 'from-pink-500 to-rose-500' },
+    { label: '生成模型', value: selectedModel || '未选择', icon: Sparkles, color: 'from-pink-500 to-rose-500' },
     {
       label: 'API 状态',
       value: stats.api_configured ? '正常' : '未配置',
@@ -2032,7 +2035,7 @@ export default function ImageFactoryPage() {
                     }}
                     className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 outline-none text-sm"
                   >
-                    <option value="">默认（{imageModelName || '系统配置'}）</option>
+                    <option value="">默认（{imageModelName || '默认'}）</option>
                     {modelOptions.map((m) => (
                       <option key={m.name} value={m.name}>
                         {m.name}
@@ -2041,7 +2044,7 @@ export default function ImageFactoryPage() {
                     ))}
                   </select>
                   <p className="mt-1 text-[11px] text-gray-400">
-                    可切换已接入的中转站图片模型；留空使用系统配置
+                    可切换你中转站的图片模型，选择后按此模型生成
                   </p>
                 </div>
               )}

@@ -34,6 +34,9 @@ export default function ModelSwitcher() {
 
   useEffect(() => {
     load()
+    const onUpdate = () => load()
+    window.addEventListener('models-updated', onUpdate)
+    return () => window.removeEventListener('models-updated', onUpdate)
   }, [])
 
   const handleSelect = async (model) => {

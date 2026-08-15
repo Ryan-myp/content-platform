@@ -288,7 +288,6 @@ export default function VideoFactoryPage() {
   const [vtplVars, setVtplVars] = useState([]) // 模板变量（文本替换 + 图片槽）
   const [vtplOverrides, setVtplOverrides] = useState({}) // 文本变量 {key: text}
   const [vtplImages, setVtplImages] = useState({}) // 图片槽 {key: url}
-  const [vtplAccess, setVtplAccess] = useState('once')
   const [vtplBusy, setVtplBusy] = useState(false)
   const [vtplResult, setVtplResult] = useState(null) // {url, cover, duration, filename}
 
@@ -321,12 +320,15 @@ export default function VideoFactoryPage() {
 
   useEffect(() => {
     fetchStats()
-loadVideoModels()
+    loadVideoModels()
     fetchVideos()
     fetchCloudPrompts()
     fetchScriptTemplates()
     fetchVtplTemplates()
+    const onModelsUpdate = () => loadVideoModels()
+    window.addEventListener('models-updated', onModelsUpdate)
     return () => {
+      window.removeEventListener('models-updated', onModelsUpdate)
       stopPolling()
     }
   }, [fetchStats, fetchVideos, stopPolling])
@@ -380,23 +382,6 @@ loadVideoModels()
       setVtplImages(im)
     } catch {
       /* 静默 */
-    }
-  }
-
-  // v21：购买授权（收费模板：按次 / 按天 / 按月，积分）
-  const handleVtplPurchase = async (accessType) => {
-    if (!vtplModal || vtplBusy) return
-    setVtplBusy(true)
-    try {
-      const fd = new FormData()
-      fd.append('template_id', vtplModal.id)
-      fd.append('access_type', accessType)
-      const res = await api.post('/api/video-templates/purchase', fd)
-      toast.success(res.data?.message || '购买成功')
-    } catch (e) {
-      toast.error(`购买失败：${e.message}`)
-    } finally {
-      setVtplBusy(false)
     }
   }
 
@@ -810,8 +795,7 @@ loadVideoModels()
       value: stats.api_configured ? '已配置' : '未配置',
       color: stats.api_configured ? 'text-green-600' : 'text-red-600',
     },
-    { label: '当前价格', value: stats.price || '免费', color: 'text-purple-600' },
-    { label: '模型版本', value: stats.model || 'V2.0', color: 'text-orange-600' },
+    { label: '模型版本', value: selectedVideoModel || '未选择', color: 'text-orange-600' },
   ]
 
   return (
@@ -901,11 +885,7 @@ loadVideoModels()
                         <span className="absolute top-1.5 left-1.5 text-[10px] px-1.5 py-0.5 rounded bg-black/60 text-white">
                           {t.platform}
                         </span>
-                        {t.pricing?.mode !== 'free' && (
-                          <span className="absolute top-1.5 right-1.5 text-[10px] px-1.5 py-0.5 rounded bg-amber-500 text-white">
-                            {t.pricing_label}
-                          </span>
-                        )}
+
                         <span className="absolute bottom-1.5 right-1.5 text-[10px] px-1.5 py-0.5 rounded bg-black/60 text-white">
                           {(t.duration || 0).toFixed(1)}s
                         </span>
@@ -2219,38 +2199,7 @@ loadVideoModels()
             <Button variant="secondary" onClick={() => setVtplModal(null)} disabled={vtplBusy}>
               取消
             </Button>
-            {vtplModal?.pricing?.mode !== 'free' && (
-              <div className="flex items-center gap-1.5">
-                {['once', 'day', 'month'].map((a) => (
-                  <button
-                    key={a}
-                    onClick={() => setVtplAccess(a)}
-                    className={`px-2.5 py-1.5 rounded-lg text-xs border transition-colors ${
-                      vtplAccess === a
-                        ? 'border-amber-500 bg-amber-50 text-amber-700'
-                        : 'border-gray-200 text-gray-500 hover:bg-gray-50'
-                    }`}
-                  >
-                    {a === 'once'
-                      ? `按次 ${vtplModal?.pricing?.once || 0}`
-                      : a === 'day'
-                        ? `按天 ${vtplModal?.pricing?.day || 0}`
-                        : `按月 ${vtplModal?.pricing?.month || 0}`}
-                    积分
-                  </button>
-                ))}
-                <Button
-                  variant="primary"
-                  size="sm"
-                  icon={Package}
-                  disabled={vtplBusy}
-                  onClick={() => handleVtplPurchase(vtplAccess)}
-                  className="bg-amber-500 hover:bg-amber-600"
-                >
-                  购买授权
-                </Button>
-              </div>
-            )}
+
             <Button
               variant="primary"
               icon={Clapperboard}

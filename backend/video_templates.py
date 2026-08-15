@@ -496,12 +496,8 @@ def _record_usage(tid: str) -> None:
 
 
 def _check_render_access(user: str, template: dict) -> None:
-    """收费模板校验：once 永久 / day / month 未过期，无权限 402 引导购买。"""
-    pricing = template.get("pricing") or {}
-    if pricing.get("mode", "free") == "free":
-        return
-    if not user:
-        raise HTTPException(402, "该模板为付费模板，请先登录后购买")
+    """模板渲染校验（本地免费版：无计费，一律放行）。"""
+    return  # 本地版不收费，所有模板可直接渲染
     conn = _get_db()
     _ensure_tables(conn)
     row = conn.execute(
@@ -723,8 +719,8 @@ async def video_templates_list(category: str = "", q: str = "", sort: str = "hot
             "duration": round(sum(s.get("seconds", 2.5) for s in t.get("scenes", []))
                               - 0.4 * max(0, len(t.get("scenes", [])) - 1), 1),
             "preview": f"/api/video-templates/preview/{t['id']}",
-            "pricing": pricing,
-            "pricing_label": {"free": "免费", "once": "按次", "day": "按天", "month": "按月"}.get(mode, "免费"),
+            "pricing": {"mode": "free"},  # 本地版无计费：全部模板免费
+            "pricing_label": "免费",
             "usage": _get_usage(t["id"]),
             "desc": t.get("desc", ""),
             "created_at": t.get("created_at", ""),
@@ -788,11 +784,8 @@ async def purchase_video_template(template_id: str = Form(...), access_type: str
     """购买视频模板（积分）：once 永久 / day / month 订阅。"""
     from common.auth import require_auth  # noqa: F401 — 签名已用
 
-    user = current_user.get("username", "") if isinstance(current_user, dict) else ""
-    t = _load_one(template_id)
-    pricing = t.get("pricing") or {}
-    if pricing.get("mode", "free") == "free":
-        return {"ok": True, "message": "免费模板无需购买", "mode": "free"}
+    # 本地免费版：所有模板免费，无需购买/积分
+    return {"ok": True, "message": "本地版全部模板免费，可直接使用", "mode": "free"}
     amounts = {"once": pricing.get("once", 0), "day": pricing.get("day", 0), "month": pricing.get("month", 0)}
     amount = int(amounts.get(access_type, amounts["once"]) or 0)
     conn = _get_db()

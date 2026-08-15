@@ -361,6 +361,48 @@ def _patch_auth_relay_quota() -> int:
     return n
 
 
+def _patch_video_templates_free() -> int:
+    """video_templates：本地版无计费——模板全部免费（去计价/校验放行/购买放行）。"""
+    path = os.path.join(CP_BACKEND, 'video_templates.py')
+    if not os.path.exists(path):
+        return 0
+    src = open(path, encoding='utf-8').read()
+    n = 0
+    # 1. 列表去计价
+    if '"pricing": {"mode": "free"}' not in src:
+        old_t = '''            "pricing": pricing,
+            "pricing_label": {"free": "免费", "once": "按次", "day": "按天", "month": "按月"}.get(mode, "免费"),'''
+        new_t = '''            "pricing": {"mode": "free"},  # 本地版无计费：全部模板免费
+            "pricing_label": "免费",'''
+        if old_t in src:
+            src = src.replace(old_t, new_t, 1)
+            n += 1
+    # 2. 渲染校验放行
+    if '模板渲染校验（本地免费版：无计费，一律放行）' not in src:
+        old_t = '''    pricing = template.get("pricing") or {}
+    if pricing.get("mode", "free") == "free":
+        return
+    if not user:
+        raise HTTPException(402, "该模板为付费模板，请先登录后购买")'''
+        new_t = '''    return  # 本地版不收费，所有模板可直接渲染'''
+        if old_t in src:
+            src = src.replace(old_t, new_t, 1)
+            n += 1
+    # 3. 购买放行
+    if '本地版全部模板免费' not in src:
+        old_t = '''    pricing = t.get("pricing") or {}
+    if pricing.get("mode", "free") == "free":
+        return {"ok": True, "message": "免费模板无需购买", "mode": "free"}'''
+        new_t = '''    # 本地免费版：所有模板免费，无需购买/积分
+    return {"ok": True, "message": "本地版全部模板免费，可直接使用", "mode": "free"}'''
+        if old_t in src:
+            src = src.replace(old_t, new_t, 1)
+            n += 1
+    if n:
+        open(path, 'w', encoding='utf-8').write(src)
+    return n
+
+
 def _patch_auth_stale_token() -> int:
     """common/auth：旧 token（用户已删/旧后端残留）→ 401 触发免登录恢复；quota 防御性取值。"""
     path = os.path.join(CP_BACKEND, 'common', 'auth.py')
@@ -626,6 +668,7 @@ def apply_all() -> int:
     total += _patch_no_hardcoded_models()
     total += _patch_task_queue_relay()
     total += _patch_auth_stale_token()
+    total += _patch_video_templates_free()
     return total
 
 
