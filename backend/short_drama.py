@@ -2039,7 +2039,7 @@ async def _drama_render_one(
                 _ch = char_map.get(_c)
                 if _ch:
                     _t2v_chars.append(f"{_ch.get('name')}（{_ch.get('appearance') or ''}，{_ch.get('outfit') or ''}）")
-            _t2v_prompt = f"{shot}。" + ("人物：" + "；".join(_t2v_chars) if _t2v_chars else "")
+            _t2v_prompt = f"全景交代：{shot}，人物全身入画，环境完整展现，镜头缓缓推进。" + ("人物：" + "；".join(_t2v_chars) if _t2v_chars else "")
             _t2v_clip = os.path.join(tmpdir, f"t2v_{i:03d}.mp4")
             _t2v_ok = await asyncio.to_thread(
                 # v1.0.70：t2v 输出 5s 真视频（不拉伸到整场——冻结末帧观感静止），
@@ -2049,14 +2049,22 @@ async def _drama_render_one(
             )
             if _t2v_ok and os.path.exists(_t2v_clip) and os.path.getsize(_t2v_clip) > 10000:
                 logger.info(f"t2v 镜头成功（第 {i + 1} 镜）")
-                # v1.0.71 全程 t2v：场次按 5s 拆成多个独立 t2v 镜头（每段不同动作），
-                # 拼接覆盖整场——全程大模型生成的动态视频，无静态图/无冻结帧。
-                # 首个 t2v 已生成（_t2v_clip），继续为剩余时长生成 n-1 个。
+                # v1.0.72 差异化镜头：每个 t2v 镜头用不同景别/机位/动作描述（镜头语言递进），
+                # 避免多镜头内容重复（用户反馈"不错但都是重复的"）。
+                # 镜头变体模板：交代全景 → 中景动作 → 特写情绪 → 中近景对话 → 收尾定格
                 _t2v_total = float(sc.get("sec") or 5)
                 _t2v_n = max(1, min(6, int(round(_t2v_total / 5.0))))
+                _t2v_variants = [
+                    f"全景交代：{shot}，人物全身入画，环境完整展现，镜头缓缓推进",
+                    f"中景动作：{shot}，人物半身，正在做关键动作，眼神流露情绪",
+                    f"特写情绪：{shot}，人物面部特写，表情细腻，情感饱满",
+                    f"中近景对话：{shot}，人物近景，微微动作，欲言又止",
+                    f"收尾镜头：{shot}，人物回眸/转身，画面渐缓，余韵悠长",
+                ]
                 _t2v_shot_list = [_t2v_clip]
                 for _ti in range(1, _t2v_n):
-                    _t2v_p2 = f"{shot}。镜头{_ti + 1}：动作继续推进，人物保持外观（{_t2v_chars[0] if _t2v_chars else ''}），情绪与上一镜头连续"
+                    _t2v_v = _t2v_variants[(_ti) % len(_t2v_variants)]
+                    _t2v_p2 = f"{_t2v_v}。" + ("人物保持外观：" + "；".join(_t2v_chars) if _t2v_chars else "")
                     _t2v_c2 = os.path.join(tmpdir, f"t2v_{i:03d}_{_ti}.mp4")
                     _ok2 = await asyncio.to_thread(
                         _t2v_shot, _t2v_p2, audio_path, _t2v_c2, 5.0,
