@@ -361,7 +361,8 @@ def _parse_script(raw: str) -> dict:
             raise ValueError(f"分镜 {s.get('id')} 内容为空")
         if not s.get("sec"):
             s["sec"] = 5
-        s["sec"] = max(2, min(45, int(s["sec"])))
+        # v1.0.64：上限 45→60（10 分钟剧单场可达 50-60s）
+        s["sec"] = max(2, min(60, int(s["sec"])))
         # v13.24 情绪白名单清洗：LLM 可能输出非法/中文情绪标签，非法回落 neutral
         emo = str(s.get("emotion") or "neutral").strip().lower()
         if emo not in ("neutral", "happy", "sad", "angry", "gentle", "serious"):
@@ -2769,7 +2770,9 @@ def _drama_parse_script(raw: str) -> dict:
     for s in scenes:
         if not s.get("shot") and not s.get("narrator") and not s.get("dialogue"):
             raise ValueError(f"分镜 {s.get('id')} 内容为空")
-        s["sec"] = max(2, min(45, int(s.get("sec") or 5)))
+        # v1.0.64：sec 上限 45→60（此前 clamp 到 45 使 10 分钟剧 12 场×45=540s < 600s 目标，
+        # 成片不足 10 分钟；红果漫剧单场可达 50-60s）
+        s["sec"] = max(2, min(60, int(s.get("sec") or 5)))
         emo = str(s.get("emotion") or "neutral").strip().lower()
         if emo not in ("neutral", "happy", "sad", "angry", "gentle", "serious"):
             emo = {"欢快": "happy", "开心": "happy", "悲伤": "sad", "难过": "sad",
