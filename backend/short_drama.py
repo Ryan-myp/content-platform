@@ -2039,39 +2039,60 @@ async def _drama_render_one(
                 _ch = char_map.get(_c)
                 if _ch:
                     _t2v_chars.append(f"{_ch.get('name')}（{_ch.get('appearance') or ''}，{_ch.get('outfit') or ''}）")
-            _t2v_prompt = f"全景交代：{shot}，人物全身入画，环境完整展现，镜头缓缓推进。" + ("人物：" + "；".join(_t2v_chars) if _t2v_chars else "")
-            _t2v_clip = os.path.join(tmpdir, f"t2v_{i:03d}.mp4")
-            _t2v_ok = await asyncio.to_thread(
-                # v1.0.70：t2v 输出 5s 真视频（不拉伸到整场——冻结末帧观感静止），
-                # 该 5s 动态镜头作为本场主镜返回，与其余镜头拼接
-                _t2v_shot, _t2v_prompt, audio_path, _t2v_clip, 5.0,
+            # v1.0.73 角色锚定的 i2v 差异化镜头：先由立绘生成场景主图（角色一致），
+            # 再对主图用 i2v 生成多个差异化动态镜头（不同景别/动作）——大模型动态 + 角色稳定。
+            _t2v_img = os.path.join(tmpdir, f"t2vbase_{i:03d}.jpg")
+            # 计算场景主图的角色锚定（立绘参考 + 位置提示）
+            _t2v_scene_chars = [c for c in (sc.get("chars") or []) if c in char_map]
+            _t2v_sc = [c for c in _t2v_scene_chars if char_map[c].get("anchor")]
+            if len(_t2v_sc) >= 2:
+                _t2v_pos = ["左边", "右边", "中间"][:len(_t2v_sc)]
+                _t2v_anchors = "；".join(f"{_t2v_pos[i]}的是{char_map[c]['name']}（{char_map[c]['anchor']}）" for i, c in enumerate(_t2v_sc))
+            else:
+                _t2v_anchors = "、".join(char_map[c]["anchor"] for c in _t2v_sc)
+            _t2v_refs = [char_refs[c] for c in _t2v_scene_chars if c in char_refs]
+            _t2v_refs2 = list(_t2v_refs)
+            if last_frame and _t2v_refs2:
+                _t2v_refs2.append(last_frame)
+            _t2v_data = await asyncio.to_thread(
+                _generate_scene_image, shot, _t2v_anchors, _t2v_refs2, uid, art_style,
+                sc.get("dialogue") or "", sc.get("shot_size") or "",
                 resolve_api_key(), resolve_api_base(),
             )
-            if _t2v_ok and os.path.exists(_t2v_clip) and os.path.getsize(_t2v_clip) > 10000:
-                logger.info(f"t2v 镜头成功（第 {i + 1} 镜）")
-                # v1.0.72 差异化镜头：每个 t2v 镜头用不同景别/机位/动作描述（镜头语言递进），
-                # 避免多镜头内容重复（用户反馈"不错但都是重复的"）。
-                # 镜头变体模板：交代全景 → 中景动作 → 特写情绪 → 中近景对话 → 收尾定格
-                _t2v_total = float(sc.get("sec") or 5)
-                _t2v_n = max(1, min(6, int(round(_t2v_total / 5.0))))
-                _t2v_variants = [
-                    f"全景交代：{shot}，人物全身入画，环境完整展现，镜头缓缓推进",
-                    f"中景动作：{shot}，人物半身，正在做关键动作，眼神流露情绪",
-                    f"特写情绪：{shot}，人物面部特写，表情细腻，情感饱满",
-                    f"中近景对话：{shot}，人物近景，微微动作，欲言又止",
-                    f"收尾镜头：{shot}，人物回眸/转身，画面渐缓，余韵悠长",
-                ]
-                _t2v_shot_list = [_t2v_clip]
-                for _ti in range(1, _t2v_n):
-                    _t2v_v = _t2v_variants[(_ti) % len(_t2v_variants)]
-                    _t2v_p2 = f"{_t2v_v}。" + ("人物保持外观：" + "；".join(_t2v_chars) if _t2v_chars else "")
-                    _t2v_c2 = os.path.join(tmpdir, f"t2v_{i:03d}_{_ti}.mp4")
-                    _ok2 = await asyncio.to_thread(
-                        _t2v_shot, _t2v_p2, audio_path, _t2v_c2, 5.0,
+            _t2v_base_ok = False
+            if _t2v_data:
+                with open(_t2v_img, "wb") as _f:
+                    _f.write(_t2v_data)
+                _t2v_base_ok = os.path.getsize(_t2v_img) > 10000
+            _t2v_variants = [
+                "全景交代：人物全身入画，环境完整展现，镜头缓缓推进",
+                "中景动作：人物半身，正在做关键动作，眼神流露情绪",
+                "特写情绪：人物面部特写，表情细腻，情感饱满",
+                "中近景对话：人物近景，微微动作，欲言又止",
+                "收尾镜头：人物回眸转身，画面渐缓，余韵悠长",
+            ]
+            _t2v_total = float(sc.get("sec") or 5)
+            _t2v_n = max(1, min(6, int(round(_t2v_total / 5.0))))
+            _t2v_shot_list = []
+            for _ti in range(_t2v_n):
+                _t2v_v = _t2v_variants[_ti % len(_t2v_variants)]
+                _t2v_motion = f"{shot}。{_t2v_v}，人物动作自然连贯，情绪符合（{sc.get('emotion') or 'neutral'}），电影质感"
+                _t2v_c = os.path.join(tmpdir, f"t2v_{i:03d}_{_ti}.mp4")
+                if _t2v_base_ok:
+                    # 用场景主图做 i2v（角色锚定）：图生视频
+                    _t2v_ok2 = await asyncio.to_thread(
+                        _i2v_scene_clip, _t2v_img, _t2v_motion, _t2v_c, uid, 240,
                         resolve_api_key(), resolve_api_base(),
                     )
-                    if _ok2 and os.path.exists(_t2v_c2) and os.path.getsize(_t2v_c2) > 10000:
-                        _t2v_shot_list.append(_t2v_c2)
+                else:
+                    _t2v_ok2 = await asyncio.to_thread(
+                        _t2v_shot, _t2v_motion, audio_path, _t2v_c, 5.0,
+                        resolve_api_key(), resolve_api_base(),
+                    )
+                if _t2v_ok2 and os.path.exists(_t2v_c) and os.path.getsize(_t2v_c) > 10000:
+                    _t2v_shot_list.append(_t2v_c)
+                else:
+                    logger.warning(f"t2v/i2v 镜头{_ti}失败（第 {i + 1} 镜）")
                 # 拼接所有 t2v 镜头（场次内容全程动态）
                 _t2v_ready = []
                 for _sf in _t2v_shot_list:
